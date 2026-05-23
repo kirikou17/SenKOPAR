@@ -1,0 +1,47 @@
+# ======================
+# ENV / SECRETS
+# ======================
+.env
+venv/
+.env/
+*.env
+
+# ======================
+# PYTHON
+# ======================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3-journal
+
+# ======================
+# DATABASE (SQLite)
+# ======================
+db.sqlite3
+
+# ======================
+# DJANGO
+# ======================
+media/
+staticfiles/
+*.log
+
+# migrations (optionnel selon stratégie)
+*/migrations/__pycache__/
+*/migrations/*.pyc
+
+# ======================
+# IDE / OS
+# ======================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ======================
+# TESTS / CACHE
+# ======================
+.pytest_cache/
+.coverage
+htmlcov/
