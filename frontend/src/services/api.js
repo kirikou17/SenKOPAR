@@ -11,7 +11,7 @@ const getLocalIP = () => {
   return window.location.hostname;
 };
 
-const BASE_URL = `http://${getLocalIP()}:8000/api/`;
+const BASE_URL = `http://localhost:8000/api/`;
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

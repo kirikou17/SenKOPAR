@@ -17,6 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from core.views import AppChoicesView
+# from shops.views import StatistiqueAPIView
+
 
 
 urlpatterns = [
@@ -27,5 +29,7 @@ urlpatterns = [
     path('api/shops/', include('shops.urls')),
     # Remplace la ligne actuelle par celle-ci :
     path('api/core/choices/', AppChoicesView.as_view(), name='global-choices'),
+    # path('api/statistiques/',StatistiqueAPIView.as_view(), name='statistiques-boutique')
+  
     
 ]

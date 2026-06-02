@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { logout } from '../features/auth/authSlice';
@@ -8,7 +8,9 @@ const DashboardLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const {boutiques, boutiqueSelectionnee, statutChargement } = useSelector((state) => state.shops);
+    const { loading = false, error = null, isAuthenticated = false } = useSelector((state) => state.auth || {});
+
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -18,6 +20,12 @@ const DashboardLayout = ({ children }) => {
     dispatch(logout());
     navigate('/login');
   };
+
+  useEffect(() => {
+    if (!isAuthenticated && !loading) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, loading, navigate]);
 
   const menuItems = [
     { name: "Dashboard", path: '/dashboard', icon: "📊" },
@@ -355,16 +363,7 @@ const DashboardLayout = ({ children }) => {
               <h3 className="title">Dashboard</h3>
             </div>
 
-            {/* BADGE DE LA BOUTIQUE ACTIVE À LA PLACE DE LA RECHERCHE */}
-            <div className="shop-badge">
-              <span className="icon">🏪</span>
-              <span>
-                {statutChargement 
-                  ? 'Chargement...' 
-                  : (boutiqueSelectionnee?.nom_boutique || 'Aucune boutique')
-                }
-              </span>
-            </div>
+          
 
             <div className="user">
               👤 {user?.username || 'Moussa'}

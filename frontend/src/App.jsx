@@ -6,6 +6,8 @@ import RegisterWizard from './features/auth/components/RegisterWizard';
 import LoginPage from './pages.jsx/LoginPage';
 import DashboardPage from './pages.jsx/DashboardPage'; // Future page d'accueil après connexion
 import FreeSales from './pages.jsx/FreeSalesPage';
+import CreditPage from './pages.jsx/CreditPage';
+import StocksPage from './pages.jsx/StocksPage';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -21,6 +23,8 @@ const App = () => {
         {/* Redirection automatique vers l'inscription pour le moment */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/stocks" element={<StocksPage />} />
+        <Route path="/credits" element={<CreditPage />} />
         
         {/* Ton composant d'inscription est bien ICI, à l'intérieur du Router */}
         <Route path="/register" element={<RegisterWizard />} />

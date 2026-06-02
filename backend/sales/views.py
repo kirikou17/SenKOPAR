@@ -57,3 +57,9 @@ class CreerVenteView(APIView):
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
+
+    def get_queryset(self):
+        boutique_id = self.request.query_params.get('boutique_id')
+        if boutique_id:
+            return self.queryset.filter(boutique_id=boutique_id)
+        return self.queryset

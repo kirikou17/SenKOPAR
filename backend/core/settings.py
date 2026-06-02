@@ -79,7 +79,7 @@ def get_local_ip():
         s.close()
     return local_ip
 
-CORS_ALLOWED_ORIGINS = [os.getenv("CORS_ALLOWED_ORIGINS"), f"http://{get_local_ip()}:5173"]
+CORS_ALLOWED_ORIGINS = ["http://127.0.0.1","http://localhost:5173", "http://192.168.43.39:5173"]
 
 from datetime import timedelta
 

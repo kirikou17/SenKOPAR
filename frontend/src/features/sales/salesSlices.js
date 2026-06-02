@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import salesService from './salesService';
 
+
 /**
  * 🛒 Thunk Asynchrone : Envoyer la vente à l'API Django
  */

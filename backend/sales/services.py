@@ -105,3 +105,36 @@ class VenteService:
             )
         
         return vente
+
+class VersementService:
+    @transaction.atomic
+    def enregistrer_versement(vente_id, montant_verse, mode_de_paiement):
+        vente = Vente.objects.select_for_update().get(id=vente_id)
+        
+        if vente.statut_paiement == StatutPaiement.PAYE:
+            raise ValidationError("Cette vente est déjà réglée. Aucun versement supplémentaire n'est nécessaire.")
+        
+        montant_verse = float(montant_verse)
+        if montant_verse <= 0:
+            raise ValidationError("Le montant du versement doit être supérieur à zéro.")
+        
+        # Enregistrement du versement
+        Versement.objects.create(
+            vente=vente,
+            montant_verse=montant_verse,
+            mode_de_paiement=mode_de_paiement,
+            date_de_versement=timezone.now()
+        )
+        
+        # Mise à jour de la vente
+        vente.montant_paye += montant_verse
+        vente.reste_a_payer = max(0.0, vente.montant_total - vente.montant_paye)
+        
+        if vente.reste_a_payer <= 0:
+            vente.statut_paiement = StatutPaiement.PAYE
+        else:
+            vente.statut_paiement = StatutPaiement.PARTIEL
+            
+        vente.save(update_fields=['montant_paye', 'reste_a_payer', 'statut_paiement'])
+        
+        return vente

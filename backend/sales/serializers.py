@@ -44,4 +44,4 @@ class VenteSerializer(serializers.ModelSerializer):
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
-        fields = ['id', 'first_name_client', 'last_name_client', 'number_call_client']
+        fields = ['id', 'first_name_client', 'last_name_client', 'number_call_client','boutique']

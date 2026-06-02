@@ -9,6 +9,7 @@ class Fournisseur(models.Model):
     adresse_fournisseur = models.CharField(max_length=255, null=True, blank=True)
     tel_fournisseur = models.CharField(max_length=20, null=True, blank=True)
     date_enregistrement_fournisseur = models.DateTimeField(auto_now_add=True)
+    boutique = models.ForeignKey('shops.Boutique', on_delete=models.CASCADE, related_name='fournisseurs', null=True, blank=True)
 
     def __str__(self):
         return f"{self.prenom_fournisseur} {self.nom_fournisseur}"

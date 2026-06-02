@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { enregistrerNouvelleVente, nettoyerStatutVente } from '../features/sales/salesSlices';
 import { chargerProduitsBoutique } from '../features/stocks/stocksSlice';
+import { chargerClientsBoutique, ajouterClient } from '../features/sales/clientsSlice';
+import { chargerBoutiquesUtilisateur, selectionnerBoutique } from '../features/shops/shopsSlice';
 
-/* ─── STYLES GLOBAUX INJECTÉS UNE SEULE FOIS ─── */
+/* ─── STYLES GLOBAUX CSS (MOBILE-FIRST) ─── */
 const GLOBAL_CSS = `
   .fs-page { padding: 20px 16px; max-width: 960px; margin: 0 auto; }
   @media (min-width: 640px) { .fs-page { padding: 28px 24px; } }
@@ -58,7 +60,7 @@ const GLOBAL_CSS = `
   @media (min-width: 520px) { .fs-grid-2 { grid-template-columns: 1fr 1fr; } }
 
   /* Recherche Client Autocomplete */
-  .fs-search-wrapper { display: flex; gap: 6px; width: 100%; }
+  .fs-search-wrapper { display: flex; gap: 6px; width: 100%; position: relative; }
   .fs-search-dropdown {
     position: absolute; top: 100%; left: 0; right: 0; background: #fff;
     border: 1px solid #cbd5e1; border-radius: 8px; max-height: 180px; overflow-y: auto;
@@ -95,30 +97,107 @@ const GLOBAL_CSS = `
   .fs-client-info h4 { margin: 0 0 2px 0; font-size: 13px; font-weight: 600; color: #1e293b; }
   .fs-client-info p { margin: 0; font-size: 12px; color: #64748b; }
 
-  /* Lignes articles */
+  /* Lignes articles adaptées pour Mobile-First */
   .fs-articles-header { display: none; }
   @media (min-width: 600px) {
-    .fs-articles-header { display: grid; grid-template-columns: 120px 1fr 72px 100px 80px 28px; gap: 8px; padding: 0 4px 8px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px; }
+    .fs-articles-header { display: grid; grid-template-columns: 120px 1fr 80px 110px 90px 40px; gap: 10px; padding: 0 4px 8px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px; }
     .fs-articles-header span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #b0bac6; font-weight: 600; }
   }
+
   .fs-ligne {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    padding: 12px; border-radius: 8px; background: #fafafa;
-    border: 1px solid #f0f4f8; margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 16px;
+    position: relative;
   }
-  .fs-ligne-cell { display: flex; flex-direction: column; gap: 4px; }
-  .fs-ligne-cell label { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-  @media (min-width: 600px) {
-    .fs-ligne { grid-template-columns: 120px 1fr 72px 100px 80px 28px; align-items: center; padding: 8px 4px; background: transparent; border: none; border-bottom: 1px solid #f8fafc; border-radius: 0; margin-bottom: 0; gap: 8px; }
-    .fs-ligne:last-of-type { border-bottom: none; }
-    .fs-ligne-cell label { display: none; }
+
+  .fs-ligne-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
   }
-  .fs-ligne-total { font-size: 13px; font-weight: 700; color: #1e293b; text-align: right; align-self: center; }
+
+  .fs-ligne-cell label {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .fs-ligne-actions-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px dashed #e2e8f0;
+  }
+
+  .fs-ligne-total {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
   .fs-del-btn {
-    width: 26px; height: 26px; border-radius: 6px; border: 1px solid #fecaca;
-    background: none; color: #ef4444; cursor: pointer; font-size: 14px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center; padding: 0; align-self: center;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #fecaca;
+    background: #fff5f5;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
+
+  @media (min-width: 600px) {
+    .fs-ligne {
+      display: grid;
+      grid-template-columns: 120px 1fr 80px 110px 90px 40px;
+      align-items: center;
+      padding: 10px 4px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #f1f5f9;
+      border-radius: 0;
+      margin-bottom: 0;
+      gap: 10px;
+    }
+    
+    .fs-ligne-cell label {
+      display: none;
+    }
+
+    .fs-ligne-actions-mobile {
+      display: contents;
+    }
+
+    .fs-ligne-total {
+      text-align: right;
+    }
+
+    .fs-del-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 6px;
+      justify-content: center;
+    }
+    .fs-del-btn span.txt-del { display: none; }
+  }
+
+  /* Récap aside */
   .fs-add-btn {
     width: 100%; margin-top: 10px; padding: 10px; background: #f8fafc;
     border: 1.5px dashed #cbd5e1; border-radius: 8px; cursor: pointer;
@@ -128,7 +207,6 @@ const GLOBAL_CSS = `
   }
   .fs-add-btn:hover { background: #f1f5f9; }
 
-  /* Récap aside */
   .fs-recap { background: #2c3e50; border-radius: 12px; padding: 20px; color: #fff; display: flex; flex-direction: column; gap: 14px; }
   .fs-recap-row { display: flex; justify-content: space-between; align-items: center; }
   .fs-recap-label { font-size: 10px; color: #78909c; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
@@ -160,51 +238,83 @@ const GLOBAL_CSS = `
   .fs-submit:not(:disabled):active { transform: scale(0.98); }
 `;
 
+const pageStyles = {
+  selectorCard: { padding: '10px', background: '#fff', borderBottom: '1px solid #e8edf2', display: 'flex', alignItems: 'center', gap: '10px' },
+  label: { fontSize: '13px', fontWeight: '600', color: '#475569' },
+  select: { padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#fafafa', fontSize: '13px' },
+  loadingText: { fontSize: '12px', color: '#94a3b8', margin: 0 }
+};
+
 const FreeSales = () => {
   const dispatch = useDispatch();
+  const searchContainerRef = useRef(null);
 
+  // Sélecteurs Redux
   const { statutChargement, erreurVente, venteReussie } = useSelector((state) => state.sales);
   const { modes_paiement = [] } = useSelector((state) => state.core);
   const { produits = [] } = useSelector((state) => state.stocks);
-  const { boutiqueSelectionnee } = useSelector((state) => state.shops);
+  const { clients = [] } = useSelector((state) => state.clients);
+  const { boutiques = [], boutiqueSelectionnee } = useSelector((state) => state.shops);
+  
   const idBoutiqueActive = boutiqueSelectionnee ? boutiqueSelectionnee.id : null;
 
-  // Liste locale réactive des clients (pour simuler l'ajout en direct)
-  const [clientsBoutique, setClientsBoutique] = useState([
-    { id: 1, nom: "Moussa Diop", telephone: "771234567" },
-    { id: 2, nom: "Fatou Kiné", telephone: "769876543" }
-  ]);
-
-  useEffect(() => {
-    if (idBoutiqueActive) dispatch(chargerProduitsBoutique());
-    if (venteReussie) {
-    dispatch(chargerProduitsBoutique());
-  }
-  }, [dispatch, idBoutiqueActive, venteReussie]);
-
+  // États locaux
+  const [clientsBoutique, setClientsBoutique] = useState([]);
   const [ongletActif, setOngletActif] = useState('ANONYME');
   const [modeDePaiement, setModeDePaiement] = useState('ESPECE');
   const [descriptionVente, setDescriptionVente] = useState('Vente comptant boutique - Client anonyme');
   
-  // États pour la recherche prédictive du client
   const [clientId, setClientId] = useState('');
   const [rechercheClient, setRechercheClient] = useState('');
   const [afficherDropdown, setAfficherDropdown] = useState(false);
 
-  // États pour la gestion du modal client
   const [estModalOuvert, setEstModalOuvert] = useState(false);
-  const [ongletModal, setOngletModal] = useState('CREER'); // 'CREER' ou 'LISTE'
-  const [nouveauClient, setNouveauClient] = useState({ nom: '', telephone: '' });
+  const [ongletModal, setOngletModal] = useState('CREER'); 
+
+  const [nouveauClient, setNouveauClient] = useState({ 
+    first_name_client: '', 
+    last_name_client: '', 
+    number_call_client: '' 
+  });
 
   const [montantVerseInitial, setMontantVerseInitial] = useState(0);
   const [lignes, setLignes] = useState([
     { produit: '', designation: '', quantite: 1, prix_unitaire: 0, estProduitStocke: true }
   ]);
 
+  // Hook d'initialisation
+  useEffect(() => {
+    if (boutiques.length === 0) {
+      dispatch(chargerBoutiquesUtilisateur());
+    }
+    if (idBoutiqueActive || venteReussie) {
+      dispatch(chargerProduitsBoutique());
+      dispatch(chargerClientsBoutique());
+    }
+
+    const handleClicExterieur = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setAfficherDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClicExterieur);
+    return () => document.removeEventListener('mousedown', handleClicExterieur);
+  }, [dispatch, idBoutiqueActive, venteReussie, boutiques.length]);
+
+  // Gestionnaires de lignes d'articles
   const ajouterLigne = () =>
     setLignes([...lignes, { produit: '', designation: '', quantite: 1, prix_unitaire: 0, estProduitStocke: true }]);
 
   const supprimerLigne = (index) => lignes.length > 1 && setLignes(lignes.filter((_, i) => i !== index));
+
+  const handleBoutiqueChange = (event) => {
+    const boutiqueId = parseInt(event.target.value, 10);
+    const boutiqueTrouvee = boutiques.find((b) => b.id === boutiqueId);
+    if (boutiqueTrouvee) {
+      dispatch(selectionnerBoutique(boutiqueTrouvee));
+    }
+  };
 
   const handleLigneChange = (index, champ, valeur) => {
     const nl = [...lignes];
@@ -221,6 +331,7 @@ const FreeSales = () => {
     setLignes(nl);
   };
 
+  // Calculs financiers
   const totalCalculé = lignes.reduce((t, l) => t + (Number(l.quantite) || 0) * (Number(l.prix_unitaire) || 0), 0);
   const resteAPayer = ongletActif === 'DETTE' ? Math.max(0, totalCalculé - (Number(montantVerseInitial) || 0)) : 0;
 
@@ -234,32 +345,59 @@ const FreeSales = () => {
     else setDescriptionVente('Vente à crédit - En attente de règlement');
   };
 
-  // Filtrage intelligent des clients
-  const clientsFiltrés = clientsBoutique.filter(c =>
-    c.nom.toLowerCase().includes(rechercheClient.toLowerCase()) ||
-    c.telephone.includes(rechercheClient)
-  );
+  // Filtrage sécurisé des clients
+  const tousLesClients = [...clients, ...clientsBoutique];
+  const clientsFiltrés = tousLesClients.filter(c => {
+    const nomBrut = c.first_name_client || '';
+    const prenomBrut = c.last_name_client || '';
+    const telBrut = c.number_call_client || '';
+
+    const prenom = String(nomBrut).toLowerCase();
+    const nom = String(prenomBrut).toLowerCase();
+    const tel = String(telBrut).toLowerCase(); 
+    const terme = rechercheClient.toLowerCase();
+
+    if (rechercheClient.includes('·')) return true;
+    return prenom.includes(terme) || nom.includes(terme) || tel.includes(terme);
+  });
 
   const selectionnerClient = (client) => {
+    const prenom = client.first_name_client || '';
+    const nom = client.last_name_client || '';
+    const tel = client.number_call_client || '';
     setClientId(client.id);
-    setRechercheClient(`${client.nom} · ${client.telephone}`);
+    setRechercheClient(`${prenom} ${nom} · ${tel}`);
     setAfficherDropdown(false);
   };
 
-  // Soumission du formulaire de création d'un client dans le Modal
+  // Gestion du nouveau client
   const handleCreerClient = (e) => {
     e.preventDefault();
-    if (!nouveauClient.nom || !nouveauClient.telephone) return;
+    e.stopPropagation();
 
-    const nvClientObj = {
-      id: Date.now(), // Simulation d'ID local
-      nom: nouveauClient.nom,
-      telephone: nouveauClient.telephone
+    if (!nouveauClient.first_name_client || !nouveauClient.last_name_client || !nouveauClient.number_call_client) {
+      alert("Veuillez remplir tous les champs obligatoires du client.");
+      return;
+    }
+
+    const payloadClient = { 
+      first_name_client: nouveauClient.first_name_client,
+      last_name_client: nouveauClient.last_name_client,
+      number_call_client: Number(nouveauClient.number_call_client),
+      boutique: Number(idBoutiqueActive || 1)
     };
 
-    setClientsBoutique([...clientsBoutique, nvClientObj]);
-    selectionnerClient(nvClientObj); // Sélectionne automatiquement le client créé
-    setNouveauClient({ nom: '', telephone: '' });
+    dispatch(ajouterClient(payloadClient));
+
+    const nvClientObj = {
+      id: `local-${Date.now()}`, 
+      ...payloadClient
+    };
+
+    setClientsBoutique([nvClientObj, ...clientsBoutique]);
+    selectionnerClient(nvClientObj); 
+    
+    setNouveauClient({ first_name_client: '', last_name_client: '', number_call_client: '' });
     setEstModalOuvert(false);
   };
 
@@ -280,10 +418,9 @@ const FreeSales = () => {
       montant_paye: ongletActif === 'DETTE' ? Number(montantVerseInitial) : totalCalculé,
       mode_de_paiement: modeDePaiement,
       description_vente: descriptionVente,
-      client: ongletActif === 'ANONYME' ? null : Number(clientId),
+      client: ongletActif === 'ANONYME' ? null : (String(clientId).startsWith('local-') ? null : Number(clientId)),
       lignes: lignesFormatees
     };
-    console.log("Payload SenKOPAR envoyé :", JSON.stringify(payloadVente));
     dispatch(enregistrerNouvelleVente(payloadVente));
   };
 
@@ -313,9 +450,33 @@ const FreeSales = () => {
     <DashboardLayout>
       <style>{GLOBAL_CSS}</style>
 
-      <div className="fs-page">
+      {/* BANDEAU SÉLECTEUR DE BOUTIQUE CORRIGÉ */}
+      <div style={pageStyles.selectorCard}>
+        <label htmlFor="boutique-select" style={pageStyles.label}>🏪 Boutique active :</label>
+        {statutChargement && boutiques.length === 0 ? (
+          <p style={pageStyles.loadingText}>Chargement des points de vente...</p>
+        ) : (
+          <select
+            id="boutique-select"
+            value={boutiqueSelectionnee ? boutiqueSelectionnee.id : ''}
+            onChange={handleBoutiqueChange}
+            style={pageStyles.select}
+          >
+            {boutiques.length === 0 ? (
+              <option value="">Aucune boutique trouvée</option>
+            ) : (
+              boutiques.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.nom_boutique}
+                </option>
+              ))
+            )}
+          </select>
+        )}
+      </div>
 
-        {/* ONGLETS SEGMENTS */}
+      <div className="fs-page">
+        {/* SÉLECTION TYPE DE VENTE */}
         <div className="fs-tabs">
           {TABS.map(tab => (
             <button
@@ -331,15 +492,13 @@ const FreeSales = () => {
           ))}
         </div>
 
-        {/* HEADER DYNAMIQUE */}
+        {/* ENTÊTE DYNAMIQUE */}
         <div className="fs-header">
-          <h2 style={{ borderLeft: `3px solid ${accentColor}`, paddingLeft: '10px' }}>
-            {activeTab.label}
-          </h2>
+          <h2 style={{ borderLeft: `3px solid ${accentColor}`, paddingLeft: '10px' }}>{activeTab.label}</h2>
           <p>{activeTab.subtitle}</p>
         </div>
 
-        {/* ALERTES */}
+        {/* FEEDBACKS API */}
         {venteReussie && (
           <div className="fs-alert fs-alert-success">
             <span style={{ fontSize: '20px' }}>🎉</span>
@@ -347,7 +506,7 @@ const FreeSales = () => {
               <strong>Opération enregistrée !</strong>
               <span>Net encaissé : {totalCalculé.toLocaleString()} FCFA</span>
             </div>
-            <button className="fs-btn-new" onClick={reinitialiserFormulaire}>+ Nouvelle vente</button>
+            <button type="button" className="fs-btn-new" onClick={reinitialiserFormulaire}>+ Nouvelle vente</button>
           </div>
         )}
         {erreurVente && (
@@ -359,11 +518,9 @@ const FreeSales = () => {
 
         <form onSubmit={soumettreVente}>
           <div className="fs-layout">
-
-            {/* ── COLONNE PRINCIPALE ── */}
+            {/* PANNEAU PRINCIPAL */}
             <div className="fs-main">
-
-              {/* CARD : Contexte */}
+              {/* CONFIGURATION CONTEXTE */}
               <div className="fs-card">
                 <p className="fs-card-title">Contexte de la vente</p>
                 <div className="fs-grid-2">
@@ -378,7 +535,7 @@ const FreeSales = () => {
                   </div>
 
                   {ongletActif !== 'ANONYME' && (
-                    <div className="fs-field">
+                    <div className="fs-field" ref={searchContainerRef}>
                       <label className="fs-label">
                         Rechercher un client <span style={{ color: accentColor }}>*</span>
                       </label>
@@ -392,7 +549,7 @@ const FreeSales = () => {
                           onFocus={() => setAfficherDropdown(true)}
                           onChange={(e) => {
                             setRechercheClient(e.target.value);
-                            setClientId(''); // Reset si l'utilisateur remodifie le texte
+                            setClientId(''); 
                             setAfficherDropdown(true);
                           }}
                         />
@@ -405,23 +562,20 @@ const FreeSales = () => {
                           👤+
                         </button>
 
-                        {/* Dropdown prédictif */}
-                        {afficherDropdown && rechercheClient.length >= 0 && (
+                        {afficherDropdown && (
                           <ul className="fs-search-dropdown">
                             {clientsFiltrés.length > 0 ? (
                               clientsFiltrés.map(c => (
                                 <li 
                                   key={c.id} 
                                   className="fs-search-item"
-                                  onClick={() => selectionnerClient(c)}
+                                  onMouseDown={() => selectionnerClient(c)}
                                 >
-                                  <strong>{c.nom}</strong> · {c.telephone}
+                                  <strong>{c.first_name_client} {c.last_name_client}</strong> · {c.number_call_client}
                                 </li>
                               ))
                             ) : (
-                              <li className="fs-search-empty">
-                                Aucun client trouvé. Cliquez sur "👤+" pour l'ajouter.
-                              </li>
+                              <li className="fs-search-empty">Aucun client trouvé. Cliquez sur "👤+" pour l'ajouter.</li>
                             )}
                           </ul>
                         )}
@@ -431,7 +585,7 @@ const FreeSales = () => {
                 </div>
               </div>
 
-              {/* CARD : Articles */}
+              {/* LISTE DES ARTICLES OPTIMISÉE MOBILE-FIRST */}
               <div className="fs-card">
                 <p className="fs-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Articles</span>
@@ -451,15 +605,16 @@ const FreeSales = () => {
 
                 {lignes.map((ligne, index) => (
                   <div key={index} className="fs-ligne">
+                    
                     <div className="fs-ligne-cell">
-                      <label>Type</label>
+                      <label>Type d'article</label>
                       <select
                         className="fs-select"
                         value={ligne.estProduitStocke}
                         onChange={(e) => handleLigneChange(index, 'estProduitStocke', e.target.value === 'true')}
                       >
-                        <option value="true">Stocké</option>
-                        <option value="false">Libre</option>
+                        <option value="true">📦 Stocké</option>
+                        <option value="false">🛍️ Libre (Non stocké)</option>
                       </select>
                     </div>
 
@@ -472,16 +627,16 @@ const FreeSales = () => {
                           required
                           onChange={(e) => handleLigneChange(index, 'produit', e.target.value)}
                         >
-                          <option value="">— Produit —</option>
+                          <option value="">— Sélectionner le produit —</option>
                           {produits?.map(p => (
-                            <option key={p.id} value={p.id}>{p.nom_produit} ({p.stock_quantite})</option>
+                            <option key={p.id} value={p.id}>{p.nom_produit} ({p.stock_quantite} dispo)</option>
                           ))}
                         </select>
                       ) : (
                         <input
                           className="fs-input"
                           type="text"
-                          placeholder="Nom de l'article"
+                          placeholder="Nom ou description de l'article"
                           value={ligne.designation}
                           required
                           onChange={(e) => handleLigneChange(index, 'designation', e.target.value)}
@@ -490,20 +645,19 @@ const FreeSales = () => {
                     </div>
 
                     <div className="fs-ligne-cell">
-                      <label>Qté</label>
+                      <label>Quantité</label>
                       <input
                         className="fs-input"
                         type="number"
                         min="1"
                         value={ligne.quantite}
                         required
-                        style={{ textAlign: 'center' }}
                         onChange={(e) => handleLigneChange(index, 'quantite', e.target.value)}
                       />
                     </div>
 
                     <div className="fs-ligne-cell">
-                      <label>Prix unit.</label>
+                      <label>Prix unitaire (FCFA)</label>
                       <input
                         className="fs-input"
                         type="number"
@@ -514,15 +668,23 @@ const FreeSales = () => {
                       />
                     </div>
 
-                    <div className="fs-ligne-total">
-                      {((Number(ligne.quantite) * Number(ligne.prix_unitaire)) || 0).toLocaleString()} F
+                    <div className="fs-ligne-actions-mobile">
+                      <div className="fs-ligne-cell" style={{ width: 'auto' }}>
+                        <label>Sous-total</label>
+                        <div className="fs-ligne-total">
+                          {((Number(ligne.quantite) * Number(ligne.prix_unitaire)) || 0).toLocaleString()} FCFA
+                        </div>
+                      </div>
+
+                      <div>
+                        {lignes.length > 1 && (
+                          <button type="button" className="fs-del-btn" onClick={() => supprimerLigne(index)}>
+                            🗑️ <span className="txt-del">Supprimer</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                      {lignes.length > 1 && (
-                        <button type="button" className="fs-del-btn" onClick={() => supprimerLigne(index)}>×</button>
-                      )}
-                    </div>
                   </div>
                 ))}
 
@@ -532,7 +694,7 @@ const FreeSales = () => {
               </div>
             </div>
 
-            {/* ── COLONNE RÉCAP (ASIDE) ── */}
+            {/* BLOC RÉCAPITULATIF (STICKY ASIDE) */}
             <div className="fs-aside">
               <div className="fs-recap">
                 <div>
@@ -551,7 +713,10 @@ const FreeSales = () => {
                         min="0"
                         max={totalCalculé}
                         value={montantVerseInitial}
-                        onChange={(e) => setMontantVerseInitial(Number(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          setMontantVerseInitial(val > totalCalculé ? totalCalculé : val);
+                        }}
                       />
                     </div>
                     <div className="fs-dette-box">
@@ -601,16 +766,15 @@ const FreeSales = () => {
         </form>
       </div>
 
-      {/* ─── MODAL : REPERTOIRE & ENREGISTREMENT CLIENT ─── */}
+      {/* MODAL CLIENTS GÉRÉ DÉCOUPLÉ */}
       {estModalOuvert && (
         <div className="fs-modal-overlay" onClick={() => setEstModalOuvert(false)}>
           <div className="fs-modal" onClick={(e) => e.stopPropagation()}>
             <div className="fs-modal-header">
               <h3>Gestion des clients</h3>
-              <button className="fs-modal-close" onClick={() => setEstModalOuvert(false)}>×</button>
+              <button type="button" className="fs-modal-close" onClick={() => setEstModalOuvert(false)}>×</button>
             </div>
             
-            {/* Onglets internes du Modal */}
             <div className="fs-modal-tabs">
               <button 
                 type="button" 
@@ -624,61 +788,73 @@ const FreeSales = () => {
                 className={`fs-modal-tab${ongletModal === 'LISTE' ? ' active' : ''}`}
                 onClick={() => setOngletModal('LISTE')}
               >
-                📋 Liste ({clientsBoutique.length})
+                📋 Parcourir la liste
               </button>
             </div>
 
             <div className="fs-modal-body">
               {ongletModal === 'CREER' ? (
-                <form onSubmit={handleCreerClient} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div className="fs-field">
-                    <label className="fs-label">Nom complet du client</label>
+                    <label className="fs-label">Prénom <span style={{ color: 'red' }}>*</span></label>
                     <input 
-                      className="fs-input" 
                       type="text" 
-                      placeholder="Ex: Amadou Diop"
-                      value={nouveauClient.nom}
-                      onChange={(e) => setNouveauClient({...nouveauClient, nom: e.target.value})}
-                      required 
-                    />
-                  </div>
-                  <div className="fs-field">
-                    <label className="fs-label">Numéro de téléphone</label>
-                    <input 
                       className="fs-input" 
-                      type="tel" 
-                      placeholder="Ex: 77XXXXXXX"
-                      value={nouveauClient.telephone}
-                      onChange={(e) => setNouveauClient({...nouveauClient, telephone: e.target.value})}
-                      required 
+                      placeholder="Ex: Sambou"
+                      value={nouveauClient.first_name_client}
+                      onChange={(e) => setNouveauClient({...nouveauClient, first_name_client: e.target.value})}
                     />
                   </div>
+
+                  <div className="fs-field">
+                    <label className="fs-label">Nom <span style={{ color: 'red' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      className="fs-input" 
+                      placeholder="Ex: Niane"
+                      value={nouveauClient.last_name_client}
+                      onChange={(e) => setNouveauClient({...nouveauClient, last_name_client: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="fs-field">
+                    <label className="fs-label">Numéro de Téléphone <span style={{ color: 'red' }}>*</span></label>
+                    <input 
+                      type="number" 
+                      className="fs-input" 
+                      placeholder="Ex: 774561818"
+                      value={nouveauClient.number_call_client}
+                      onChange={(e) => setNouveauClient({...nouveauClient, number_call_client: e.target.value})}
+                    />
+                  </div>
+
                   <button 
-                    type="submit" 
+                    type="button" 
                     className="fs-submit" 
-                    style={{ background: '#3498db', marginTop: '10px', boxShadow: 'none' }}
+                    style={{ backgroundColor: '#3498db', marginTop: '10px' }}
+                    onClick={handleCreerClient}
                   >
-                    💾 Enregistrer et lier à la vente
+                    💾 Sauvegarder le client
                   </button>
-                </form>
+                </div>
               ) : (
                 <ul className="fs-client-list">
-                  {clientsBoutique.map(c => (
+                  {tousLesClients.map(c => (
                     <li key={c.id} className="fs-client-item">
                       <div className="fs-client-info">
-                        <h4>{c.nom}</h4>
-                        <p>📞 {c.telephone}</p>
+                        <h4>{c.first_name_client} {c.last_name_client}</h4>
+                        <p>📞 {c.number_call_client}</p>
                       </div>
                       <button 
                         type="button" 
                         className="fs-btn-new" 
-                        style={{ background: '#3498db', padding: '5px 10px' }}
+                        style={{ backgroundColor: '#3498db' }}
                         onClick={() => {
                           selectionnerClient(c);
                           setEstModalOuvert(false);
                         }}
                       >
-                        Choisir
+                        Sélectionner
                       </button>
                     </li>
                   ))}

@@ -30,6 +30,31 @@ const salesService = {
     }
   },
 
+  ObtenirClientFiltrer: async (boutiqueId) => {
+  try {
+    if (!boutiqueId) return [];
+    
+    const response = await apiClient.get(`sales/clients/?boutique_id=${boutiqueId}`);
+    
+    return response.data; // 👈 ERREUR 1 CORRIGÉE : Il faut retourner les données !
+  } catch (erreur) {
+    // 👈 ERREUR 2 CORRIGÉE : Optionnel mais recommandé pour le débug
+    console.error("Erreur API ObtenirClientFiltrer:", erreur); 
+    throw new Error("Impossible de charger les clients de la boutique");
+  }
+},
+
+AjouterClient: async (donneesClient) => {
+  try {
+    const response = await apiClient.post('sales/clients/', donneesClient);
+    return response.data; 
+  } catch (erreur) {
+    console.error("Erreur API AjouterClient:", erreur); 
+    throw new Error("Impossible d'ajouter le client");
+  }
+} 
+
+
   /**
    * 📋 Optionnel : Récupérer l'historique des ventes de la boutique
    */

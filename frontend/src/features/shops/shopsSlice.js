@@ -18,6 +18,7 @@ export const chargerBoutiquesUtilisateur = createAsyncThunk(
   }
 );
 
+
 const initialState = {
   boutiques: [],
   boutiqueSelectionnee: null, // Utile pour stocker la boutique active dans SenKOPAR

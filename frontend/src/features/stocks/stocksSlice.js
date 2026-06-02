@@ -30,14 +30,24 @@ export const chargerProduitsBoutique = createAsyncThunk(
 // 📦 Charger tous les produits du catalogue (Global)
 export const chargerTousLesProduits = createAsyncThunk(
   'stock/chargerTousLesProduits',
-  async (_, { rejectWithValue }) => {
+   async (_, thunkAPI) => {
     try { 
-      return await stockService.obtenirProduits(); 
+      // 💡 Extraction de la boutique sélectionnée directement depuis le slice "shops"
+      const etatGlobal = thunkAPI.getState();
+      const boutiqueId = etatGlobal.shops.boutiqueSelectionnee?.id;
+
+      if (!boutiqueId) {
+        return thunkAPI.rejectWithValue("Aucune boutique sélectionnée.");
+      }
+
+      // 📡 Passage de l'ID au service
+      return await stockService.obtenirProduits(boutiqueId); 
     }
     catch (erreur) { 
-      return rejectWithValue(erreur.message); 
+      return thunkAPI.rejectWithValue(erreur.message); 
     }
   }
+
 );
 
 // ➕ Ajouter un nouveau produit
@@ -107,7 +117,13 @@ const stockSlice = createSlice({
         (p) => p.stock_quantite <= p.alert_stock
       );
     },
-    reinitialiserStock: () => initialState
+    reinitialiserStock: () => initialState,
+    filtrerProduitsDisponibles: (state) => {
+      console.log("Filtrage des produits disponibles...");
+      state.produits = state.produits.filter(p => p.stock_quantite > 0);
+      state.produitsEnAlerte = state.produitsEnAlerte.filter(p => p.stock_quantite > 0);
+      console.log("Produits restants après filtrage:", state.produits);
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -117,7 +133,7 @@ const stockSlice = createSlice({
       .addCase(chargerProduitsBoutique.fulfilled, (state, action) => {
         state.statutChargement = false;
         state.produits = action.payload;
-        state.produitsEnAlerte = action.payload.filter(p => p.stock_quantite <= p.alert_stock);
+        state.produitsEnAlerte = action.payload.filter(p => p.stock_quantite >0);
       })
 
       // Chargement de la liste globale
@@ -189,5 +205,5 @@ const stockSlice = createSlice({
   }
 });
 
-export const { nettoyerStatutStock, calculerAlertesStock, reinitialiserStock } = stockSlice.actions;
+export const { nettoyerStatutStock, calculerAlertesStock, reinitialiserStock, filtrerProduitsDisponibles } = stockSlice.actions;
 export default stockSlice.reducer;
