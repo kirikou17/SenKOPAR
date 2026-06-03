@@ -33,9 +33,10 @@ const RegisterWizard = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
 
   // --- CHARGEMENT DES CHOIX DEPUIS L'API ---
+  useEffect(()=>{
   const fetchChoices = async () => {
   try {
-    # Détermination dynamique de l'URL
+    // Détermination dynamique de l'URL
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const url = isLocal ? 'http://127.0.0.1:8000/api/core/choices/' : '/api/core/choices/';
 

@@ -105,95 +105,26 @@ const GLOBAL_CSS = `
   }
 
   .fs-ligne {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    border-radius: 10px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 16px;
-    position: relative;
+    display: flex; flex-direction: column; gap: 12px; padding: 16px;
+    border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;
+    margin-bottom: 16px; position: relative;
   }
-
-  .fs-ligne-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-  }
-
-  .fs-ligne-cell label {
-    display: block;
-    font-size: 11px;
-    color: #64748b;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .fs-ligne-actions-mobile {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 8px;
-    padding-top: 12px;
-    border-top: 1px dashed #e2e8f0;
-  }
-
-  .fs-ligne-total {
-    font-size: 14px;
-    font-weight: 700;
-    color: #1e293b;
-  }
-
+  .fs-ligne-cell { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+  .fs-ligne-cell label { display: block; font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .fs-ligne-actions-mobile { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
+  .fs-ligne-total { font-size: 14px; font-weight: 700; color: #1e293b; }
   .fs-del-btn {
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid #fecaca;
-    background: #fff5f5;
-    color: #ef4444;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    padding: 8px 16px; border-radius: 6px; border: 1px solid #fecaca;
+    background: #fff5f5; color: #ef4444; cursor: pointer; font-size: 13px;
+    font-weight: 600; display: flex; align-items: center; gap: 4px;
   }
 
   @media (min-width: 600px) {
-    .fs-ligne {
-      display: grid;
-      grid-template-columns: 120px 1fr 80px 110px 90px 40px;
-      align-items: center;
-      padding: 10px 4px;
-      background: transparent;
-      border: none;
-      border-bottom: 1px solid #f1f5f9;
-      border-radius: 0;
-      margin-bottom: 0;
-      gap: 10px;
-    }
-    
-    .fs-ligne-cell label {
-      display: none;
-    }
-
-    .fs-ligne-actions-mobile {
-      display: contents;
-    }
-
-    .fs-ligne-total {
-      text-align: right;
-    }
-
-    .fs-del-btn {
-      width: 28px;
-      height: 28px;
-      padding: 0;
-      border-radius: 6px;
-      justify-content: center;
-    }
+    .fs-ligne { display: grid; grid-template-columns: 120px 1fr 80px 110px 90px 40px; align-items: center; padding: 10px 4px; background: transparent; border: none; border-bottom: 1px solid #f1f5f9; border-radius: 0; margin-bottom: 0; gap: 10px; }
+    .fs-ligne-cell label { display: none; }
+    .fs-ligne-actions-mobile { display: contents; }
+    .fs-ligne-total { text-align: right; }
+    .fs-del-btn { width: 28px; height: 28px; padding: 0; border-radius: 6px; justify-content: center; }
     .fs-del-btn span.txt-del { display: none; }
   }
 
@@ -218,14 +149,8 @@ const GLOBAL_CSS = `
     border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.07);
     color: #fff; font-size: 15px; font-weight: 700; outline: none;
   }
-  .fs-recap-select {
-    width: 100%; padding: 9px 11px; border-radius: 7px; box-sizing: border-box;
-    border: none; background: #fff; color: #2c3e50; font-size: 13px; font-weight: 700; cursor: pointer;
-  }
-  .fs-dette-box {
-    display: flex; justify-content: space-between; align-items: center;
-    background: rgba(255,118,117,0.12); border-radius: 7px; padding: 10px 12px;
-  }
+  .fs-recap-select { width: 100%; padding: 9px 11px; border-radius: 7px; box-sizing: border-box; border: none; background: #fff; color: #2c3e50; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .fs-dette-box { display: flex; justify-content: space-between; align-items: center; background: rgba(255,118,117,0.12); border-radius: 7px; padding: 10px 12px; }
   .fs-dette-label { font-size: 12px; font-weight: 600; color: #ff7675; }
   .fs-dette-value { font-size: 16px; font-weight: 800; color: #ff7675; }
   .fs-submit {
@@ -259,7 +184,6 @@ const FreeSales = () => {
   const idBoutiqueActive = boutiqueSelectionnee ? boutiqueSelectionnee.id : null;
 
   // États locaux
-  const [clientsBoutique, setClientsBoutique] = useState([]);
   const [ongletActif, setOngletActif] = useState('ANONYME');
   const [modeDePaiement, setModeDePaiement] = useState('ESPECE');
   const [descriptionVente, setDescriptionVente] = useState('Vente comptant boutique - Client anonyme');
@@ -301,6 +225,18 @@ const FreeSales = () => {
     document.addEventListener('mousedown', handleClicExterieur);
     return () => document.removeEventListener('mousedown', handleClicExterieur);
   }, [dispatch, idBoutiqueActive, venteReussie, boutiques.length]);
+
+  // Synchronisation intelligente de la sélection après l'ajout d'un client
+  useEffect(() => {
+    if (nouveauClient.number_call_client === 'PENDING_SYNC' && clients.length > 0) {
+      // Retrouve le dernier client inséré via son numéro de téléphone temporaire si besoin, ou prend le premier
+      const clientRecrute = clients[0]; 
+      if (clientRecrute) {
+        selectionnerClient(clientRecrute);
+        setNouveauClient({ first_name_client: '', last_name_client: '', number_call_client: '' });
+      }
+    }
+  }, [clients]);
 
   // Gestionnaires de lignes d'articles
   const ajouterLigne = () =>
@@ -345,16 +281,11 @@ const FreeSales = () => {
     else setDescriptionVente('Vente à crédit - En attente de règlement');
   };
 
-  // Filtrage sécurisé des clients
-  const tousLesClients = [...clients, ...clientsBoutique];
-  const clientsFiltrés = tousLesClients.filter(c => {
-    const nomBrut = c.first_name_client || '';
-    const prenomBrut = c.last_name_client || '';
-    const telBrut = c.number_call_client || '';
-
-    const prenom = String(nomBrut).toLowerCase();
-    const nom = String(prenomBrut).toLowerCase();
-    const tel = String(telBrut).toLowerCase(); 
+  // Filtrage basé uniquement sur Redux (Zéro doublon)
+  const clientsFiltrés = clients.filter(c => {
+    const prenom = String(c.first_name_client || '').toLowerCase();
+    const nom = String(c.last_name_client || '').toLowerCase();
+    const tel = String(c.number_call_client || '').toLowerCase(); 
     const terme = rechercheClient.toLowerCase();
 
     if (rechercheClient.includes('·')) return true;
@@ -370,8 +301,8 @@ const FreeSales = () => {
     setAfficherDropdown(false);
   };
 
-  // Gestion du nouveau client
-  const handleCreerClient = (e) => {
+  // Gestion de la création client épurée
+  const handleCreerClient = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -387,17 +318,14 @@ const FreeSales = () => {
       boutique: Number(idBoutiqueActive || 1)
     };
 
-    dispatch(ajouterClient(payloadClient));
-
-    const nvClientObj = {
-      id: `local-${Date.now()}`, 
-      ...payloadClient
-    };
-
-    setClientsBoutique([nvClientObj, ...clientsBoutique]);
-    selectionnerClient(nvClientObj); 
+    // 1. Envoi au serveur via Redux
+    await dispatch(ajouterClient(payloadClient));
     
-    setNouveauClient({ first_name_client: '', last_name_client: '', number_call_client: '' });
+    // 2. Commande un rechargement propre pour garantir la récupération de l'ID backend réel
+    dispatch(chargerClientsBoutique());
+
+    // 3. Flag de synchronisation pour le second useEffect
+    setNouveauClient(prev => ({ ...prev, number_call_client: 'PENDING_SYNC' }));
     setEstModalOuvert(false);
   };
 
@@ -418,7 +346,7 @@ const FreeSales = () => {
       montant_paye: ongletActif === 'DETTE' ? Number(montantVerseInitial) : totalCalculé,
       mode_de_paiement: modeDePaiement,
       description_vente: descriptionVente,
-      client: ongletActif === 'ANONYME' ? null : (String(clientId).startsWith('local-') ? null : Number(clientId)),
+      client: ongletActif === 'ANONYME' ? null : Number(clientId),
       lignes: lignesFormatees
     };
     dispatch(enregistrerNouvelleVente(payloadVente));
@@ -450,7 +378,7 @@ const FreeSales = () => {
     <DashboardLayout>
       <style>{GLOBAL_CSS}</style>
 
-      {/* BANDEAU SÉLECTEUR DE BOUTIQUE CORRIGÉ */}
+      {/* BANDEAU SÉLECTEUR DE BOUTIQUE */}
       <div style={pageStyles.selectorCard}>
         <label htmlFor="boutique-select" style={pageStyles.label}>🏪 Boutique active :</label>
         {statutChargement && boutiques.length === 0 ? (
@@ -465,7 +393,7 @@ const FreeSales = () => {
             {boutiques.length === 0 ? (
               <option value="">Aucune boutique trouvée</option>
             ) : (
-              boutiques.map((b) => (
+               boutiques.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.nom_boutique}
                 </option>
@@ -585,7 +513,7 @@ const FreeSales = () => {
                 </div>
               </div>
 
-              {/* LISTE DES ARTICLES OPTIMISÉE MOBILE-FIRST */}
+              {/* LISTE DES ARTICLES */}
               <div className="fs-card">
                 <p className="fs-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Articles</span>
@@ -605,7 +533,6 @@ const FreeSales = () => {
 
                 {lignes.map((ligne, index) => (
                   <div key={index} className="fs-ligne">
-                    
                     <div className="fs-ligne-cell">
                       <label>Type d'article</label>
                       <select
@@ -675,7 +602,6 @@ const FreeSales = () => {
                           {((Number(ligne.quantite) * Number(ligne.prix_unitaire)) || 0).toLocaleString()} FCFA
                         </div>
                       </div>
-
                       <div>
                         {lignes.length > 1 && (
                           <button type="button" className="fs-del-btn" onClick={() => supprimerLigne(index)}>
@@ -684,7 +610,6 @@ const FreeSales = () => {
                         )}
                       </div>
                     </div>
-
                   </div>
                 ))}
 
@@ -742,8 +667,8 @@ const FreeSales = () => {
                     ) : (
                       <>
                         <option value="ESPECE">💵 Espèce</option>
-                        <option value="WAVE">🌊 Wave</option>
                         <option value="ORANGE_MONEY">🍊 Orange Money</option>
+                        <option value="WAVE">🌊 Wave</option>
                       </>
                     )}
                   </select>
@@ -752,13 +677,10 @@ const FreeSales = () => {
                 <button
                   type="submit"
                   className="fs-submit"
-                  disabled={statutChargement || totalCalculé === 0}
-                  style={{ backgroundColor: accentColor }}
+                  style={{ background: accentColor }}
+                  disabled={statutChargement || lignes.some(l => l.estProduitStocke ? !l.produit : !l.designation)}
                 >
-                  {statutChargement ? '⏳ Validation…' :
-                   ongletActif === 'ANONYME' ? '🚀 Encaisser' :
-                   ongletActif === 'COMPTANT_CLIENT' ? '👤 Encaisser · Lier client' :
-                   '📝 Enregistrer le crédit'}
+                  {statutChargement ? 'Validation en cours...' : '🛒 Confirmer & Valider la vente'}
                 </button>
               </div>
             </div>
@@ -766,98 +688,102 @@ const FreeSales = () => {
         </form>
       </div>
 
-      {/* MODAL CLIENTS GÉRÉ DÉCOUPLÉ */}
+      {/* ─── MODAL GESTION CLIENTS CORRIGÉ ─── */}
       {estModalOuvert && (
         <div className="fs-modal-overlay" onClick={() => setEstModalOuvert(false)}>
           <div className="fs-modal" onClick={(e) => e.stopPropagation()}>
             <div className="fs-modal-header">
-              <h3>Gestion des clients</h3>
+              <h3>Gestion des comptes clients</h3>
               <button type="button" className="fs-modal-close" onClick={() => setEstModalOuvert(false)}>×</button>
             </div>
-            
+
+            {/* Onglets du modal avec injection dynamique du compteur entre parenthèses */}
             <div className="fs-modal-tabs">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className={`fs-modal-tab${ongletModal === 'CREER' ? ' active' : ''}`}
                 onClick={() => setOngletModal('CREER')}
               >
-                ➕ Nouveau Client
+                ➕ Nouveau client
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className={`fs-modal-tab${ongletModal === 'LISTE' ? ' active' : ''}`}
                 onClick={() => setOngletModal('LISTE')}
               >
-                📋 Parcourir la liste
+                📋 Sélectionner ({clients.length})
               </button>
             </div>
 
             <div className="fs-modal-body">
               {ongletModal === 'CREER' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <form onSubmit={handleCreerClient} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div className="fs-field">
-                    <label className="fs-label">Prénom <span style={{ color: 'red' }}>*</span></label>
-                    <input 
-                      type="text" 
-                      className="fs-input" 
-                      placeholder="Ex: Sambou"
+                    <label className="fs-label">Prénom *</label>
+                    <input
+                      className="fs-input"
+                      type="text"
+                      required
                       value={nouveauClient.first_name_client}
-                      onChange={(e) => setNouveauClient({...nouveauClient, first_name_client: e.target.value})}
+                      onChange={(e) => setNouveauClient({ ...nouveauClient, first_name_client: e.target.value })}
                     />
                   </div>
-
                   <div className="fs-field">
-                    <label className="fs-label">Nom <span style={{ color: 'red' }}>*</span></label>
-                    <input 
-                      type="text" 
-                      className="fs-input" 
-                      placeholder="Ex: Niane"
+                    <label className="fs-label">Nom *</label>
+                    <input
+                      className="fs-input"
+                      type="text"
+                      required
                       value={nouveauClient.last_name_client}
-                      onChange={(e) => setNouveauClient({...nouveauClient, last_name_client: e.target.value})}
+                      onChange={(e) => setNouveauClient({ ...nouveauClient, last_name_client: e.target.value })}
                     />
                   </div>
-
                   <div className="fs-field">
-                    <label className="fs-label">Numéro de Téléphone <span style={{ color: 'red' }}>*</span></label>
-                    <input 
-                      type="number" 
-                      className="fs-input" 
-                      placeholder="Ex: 774561818"
+                    <label className="fs-label">Téléphone *</label>
+                    <input
+                      className="fs-input"
+                      type="tel"
+                      required
+                      placeholder="Ex: 77XXXXXXX"
                       value={nouveauClient.number_call_client}
-                      onChange={(e) => setNouveauClient({...nouveauClient, number_call_client: e.target.value})}
+                      onChange={(e) => setNouveauClient({ ...nouveauClient, number_call_client: e.target.value })}
                     />
                   </div>
-
-                  <button 
-                    type="button" 
-                    className="fs-submit" 
-                    style={{ backgroundColor: '#3498db', marginTop: '10px' }}
-                    onClick={handleCreerClient}
+                  <button
+                    type="submit"
+                    className="fs-submit"
+                    style={{ background: '#3498db', marginTop: '10px' }}
                   >
-                    💾 Sauvegarder le client
+                    Enregistrer et sélectionner le client
                   </button>
-                </div>
+                </form>
               ) : (
                 <ul className="fs-client-list">
-                  {tousLesClients.map(c => (
-                    <li key={c.id} className="fs-client-item">
-                      <div className="fs-client-info">
-                        <h4>{c.first_name_client} {c.last_name_client}</h4>
-                        <p>📞 {c.number_call_client}</p>
-                      </div>
-                      <button 
-                        type="button" 
-                        className="fs-btn-new" 
-                        style={{ backgroundColor: '#3498db' }}
-                        onClick={() => {
-                          selectionnerClient(c);
-                          setEstModalOuvert(false);
-                        }}
-                      >
-                        Sélectionner
-                      </button>
-                    </li>
-                  ))}
+                  {clients.length > 0 ? (
+                    clients.map((c) => (
+                      <li key={c.id} className="fs-client-item">
+                        <div className="fs-client-info">
+                          <h4>{c.first_name_client} {c.last_name_client}</h4>
+                          <p>📞 {c.number_call_client}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="fs-btn-new"
+                          style={{ background: '#3498db' }}
+                          onClick={() => {
+                            selectionnerClient(c);
+                            setEstModalOuvert(false);
+                          }}
+                        >
+                          Choisir
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                      Aucun client enregistré dans cette boutique.
+                    </p>
+                  )}
                 </ul>
               )}
             </div>

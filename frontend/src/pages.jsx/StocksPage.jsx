@@ -6,6 +6,8 @@ import {
 } from '../features/stocks/stocksSlice';
 import { chargerBoutiquesUtilisateur, selectionnerBoutique } from '../features/shops/shopsSlice';
 import { chargerFournisseurs, ajouterFournisseur } from '../features/stocks/fournisseurSlice'; 
+import { ajouterNouveauProduit } from '../features/stocks/stocksSlice';
+import { enregistrerMouvementStock } from '../features/stocks/mouvementsSlice'; // 👈 Remplacer par le chemin de votre Slice
 
 /* ─── STYLES GLOBAUX CSS ─── */
 const STOCK_CSS = `
@@ -149,7 +151,7 @@ const StocksPage = () => {
       fournisseur: nouveauProduit.fournisseur ? Number(nouveauProduit.fournisseur) : null
     };
 
-    dispatch(enregistrerNouvelArticle(payload))
+    dispatch(ajouterNouveauProduit(payload))
       .unwrap() // Déballe pour intercepter proprement la réussite ou l'échec
       .then(() => {
         setOngletActif('INVENTAIRE');

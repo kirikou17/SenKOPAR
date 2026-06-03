@@ -15,8 +15,6 @@ class Client(models.Model):
 
 # --- 2. MODÈLE VENTE ---
 class Vente(models.Model):
-   
-
     description_vente = models.CharField(max_length=255, null=True, blank=True)
     montant_total = models.FloatField(default=0.0)
     montant_paye = models.FloatField(default=0.0)

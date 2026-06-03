@@ -7,6 +7,7 @@ import shopsReducer from '../features/shops/shopsSlice';
 import clientsReducer from '../features/sales/clientsSlice';
 import fournisseurReducer from '../features/stocks/fournisseurSlice';
 import statisticsReducer from '../features/shops/satisticsSlice'; // Assure-toi que le chemin est correct
+import mouvementsReducer from '../features/stocks/mouvementsSlice'; // Assure-toi que le chemin est correct
 
 // 1. Importation de tous tes reducers de features
 
@@ -26,6 +27,7 @@ const rootReducer = combineReducers({
   clients: clientsReducer, // État accessible via state.clients (futur)
   fournisseurs: fournisseurReducer, // État accessible via state.fournisseurs (futur)
   statistics: statisticsReducer, // État accessible via state.statistics (futur)
+  mouvements: mouvementsReducer, // État accessible via state.mouvements (futur)
   
 });
 

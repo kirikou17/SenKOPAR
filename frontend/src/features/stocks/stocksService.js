@@ -99,8 +99,17 @@ chargerFournisseurs: async (boutiqueId) => {
     console.error("Erreur API fournisseurs:", erreur);
     throw new Error("Impossible de charger les fournisseurs.");
   }
-}
+},
 
+enregistrerMouvementStock: async (donneesMouvement) => {
+  try {
+    const reponse = await apiClient.post('/products/mouvements/', donneesMouvement);
+    return reponse.data ? reponse.data : reponse;
+  } catch (erreur) {
+    throw new Error(erreur.response?.data?.detail || "Échec de l'enregistrement du mouvement de stock.");
+  }
+
+}
 // chargerFournisseurs: async () => {
 //   try {
 //     const reponse = await apiClient.get(`/products/fournisseurs/`);
