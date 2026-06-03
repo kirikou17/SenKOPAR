@@ -33,25 +33,25 @@ const RegisterWizard = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
 
   // --- CHARGEMENT DES CHOIX DEPUIS L'API ---
-  useEffect(() => {
-    const fetchChoices = async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:8000/api/core/choices/');
-        if (response.ok) {
-          const data = await response.json();
-          setApiChoices({
-            regions: data.regions || [],
-            roles: data.roles || []
-          });
-        } else {
-          console.error("Impossible de récupérer les options de configuration.");
-        }
-      } catch (error) {
-        console.error("Erreur réseau lors de la récupération des choix:", error);
-      } finally {
-        setLoadingChoices(false);
-      }
-    };
+  const fetchChoices = async () => {
+  try {
+    # Détermination dynamique de l'URL
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const url = isLocal ? 'http://127.0.0.1:8000/api/core/choices/' : '/api/core/choices/';
+
+    const response = await fetch(url);
+    if (response.ok) {
+      const data = await response.json();
+      setApiChoices({ regions: data.regions || [], roles: data.roles || [] });
+    } else {
+      console.error("Impossible de récupérer les options de configuration.");
+    }
+  } catch (error) {
+    console.error("Erreur réseau lors de la récupération des choix:", error);
+  } finally {
+    setLoadingChoices(false);
+  }
+};
 
     fetchChoices();
   }, []);
