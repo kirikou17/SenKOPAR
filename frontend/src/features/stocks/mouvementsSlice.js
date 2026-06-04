@@ -18,22 +18,22 @@ const mouvementsSlice = createSlice({
   name: 'mouvements',
   initialState: {
     mouvementsdata: [], // 👈 Ton tableau s'appelle bien comme ça
-    loading: false,
+    loadingmouvements: false,
     error: null
   },
     reducers: {},
     extraReducers: (builder) => {
         builder
             .addCase(enregistrerMouvementStock.pending, (state) => {
-                state.loading = true;
+                state.loadingmouvements = true;
                 state.error = null;
             })
             .addCase(enregistrerMouvementStock.fulfilled, (state, action) => {
-                state.loading = false;
+                state.loadingmouvements = false;
                 state.mouvementsdata.push(action.payload); // Ajoute le nouveau mouvement à la liste
             })
             .addCase(enregistrerMouvementStock.rejected, (state, action) => {
-                state.loading = false;
+                state.loadingmouvements = false;
                 state.error = action.payload;
             });
     }

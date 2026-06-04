@@ -31,8 +31,8 @@ const DashboardLayout = ({ children }) => {
     { name: "Dashboard", path: '/dashboard', icon: "📊" },
     { name: 'Stocks', path: '/stocks', icon: "📦" },
     { name: 'Ventes', path: '/freesales', icon: "🛒" },
-    { name: 'Crédits', path: '/credits', icon: "💳" },
-    { name: 'Settings', path: '/settings', icon: "⚙️" },
+    // { name: 'Crédits', path: '/credits', icon: "💳" },
+    // { name: 'Settings', path: '/settings', icon: "⚙️" },
   ];
 
   return (
