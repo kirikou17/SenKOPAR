@@ -90,8 +90,8 @@ const StocksPage = () => {
   const dispatch = useDispatch();
 
   const { produits = [], statutChargement, erreurStock } = useSelector((state) => state.stocks);
-  const { fournisseursdata = [],loading } = useSelector((state) => state.fournisseurs); 
-  const {loadingmouvements}= useSelector((state) => state.mouvements);
+  const { fournisseursdata = [], loading } = useSelector((state) => state.fournisseurs); 
+  const { loadingmouvements } = useSelector((state) => state.mouvements);
   const { boutiques = [], boutiqueSelectionnee } = useSelector((state) => state.shops);
   const idBoutiqueActive = boutiqueSelectionnee ? boutiqueSelectionnee.id : null;
   
@@ -121,7 +121,7 @@ const StocksPage = () => {
     if (idBoutiqueActive) {
       dispatch(chargerTousLesProduits());
     }
-  }, [dispatch, idBoutiqueActive,produits]);
+  }, [dispatch, idBoutiqueActive]); // 💡 Nettoyage : "produits" retiré des dépendances pour éviter les boucles infinies de re-render
 
   const handleBoutiqueChange = (event) => {
     const bId = parseInt(event.target.value, 10);
@@ -138,6 +138,10 @@ const StocksPage = () => {
   /* ─── HANDLER ARTICLE ─── */
   const handleCreerProduit = (e) => {
     e.preventDefault();
+    if (!idBoutiqueActive) {
+      alert("Erreur : Veuillez sélectionner une boutique active avant de créer un produit.");
+      return;
+    }
     const payload = {
       ...nouveauProduit,
       boutique: idBoutiqueActive,
@@ -150,6 +154,7 @@ const StocksPage = () => {
     dispatch(ajouterNouveauProduit(payload))
       .unwrap()
       .then(() => {
+        dispatch(chargerTousLesProduits()); // Force le rafraîchissement global du stock
         setOngletActif('INVENTAIRE');
         setNouveauProduit({ nom_produit: '', stock_quantite: 0, prix_d_achat: '', prix_de_vente: '', alert_stock: 5, fournisseur: '' });
       })
@@ -158,7 +163,6 @@ const StocksPage = () => {
       });
   };
 
-  /* ─── HANDLER MOUVEMENT ─── CORRECTION: "movimiento" → "mouvement" ─── */
   /* ─── HANDLER MOUVEMENT ─── */
   const handleEnregistrerMouvement = (e) => {
     e.preventDefault();
@@ -167,14 +171,12 @@ const StocksPage = () => {
       type_mouvement: mouvement.type_mouvement,
       quantite: Number(mouvement.quantite),
       motif: mouvement.motif || null,
-      // ✅ CORRIGÉ : "mouvement" au lieu de "movimiento"
       nouveau_prix_achat: mouvement.nouveau_prix_achat ? Number(mouvement.nouveau_prix_achat) : null,
       nouveau_prix_vente: mouvement.nouveau_prix_vente ? Number(mouvement.nouveau_prix_vente) : null,
     };
     dispatch(enregistrerMouvementStock(payload))
       .unwrap()
       .then(() => {
-        // Force la mise à jour de la liste des produits après le mouvement
         dispatch(chargerTousLesProduits());
         setOngletActif('INVENTAIRE');
         setMouvement({ produitId: '', type_mouvement: 'ENTREE', quantite: 1, motif: '', nouveau_prix_achat: '', nouveau_prix_vente: '' });
@@ -184,10 +186,10 @@ const StocksPage = () => {
       });
   };
 
-  /* ─── HANDLER FOURNISSEUR ─── Pattern identique à handleCreerClient dans FreeSales ─── */
+  /* ─── HANDLER FOURNISSEUR ─── */
   const handleCreerFournisseur = (e) => {
     e.preventDefault();
-    // e.stopPropagation(); // ✅ Isolation totale : jamais déclenché par un form parent
+    e.stopPropagation(); 
     const payload = { ...nouveauFournisseur, boutique: idBoutiqueActive };
     dispatch(ajouterFournisseur(payload))
       .unwrap()
@@ -218,7 +220,7 @@ const StocksPage = () => {
             value={boutiqueSelectionnee ? boutiqueSelectionnee.id : ''}
             onChange={handleBoutiqueChange}
             style={pageStyles.select}
-            disabled={true}
+            disabled={boutiques.length <= 1} // ✅ CORRIGÉ : Désactivé uniquement s'il n'y a qu'une boutique
           >
             {boutiques.length === 0 ? (
               <option value="">Aucune boutique trouvée</option>
@@ -317,7 +319,7 @@ const StocksPage = () => {
           </>
         )}
 
-        {/* ─── AJOUT NOUVEL ARTICLE ─── formulaire isolé, sans modal imbriqué ─── */}
+        {/* ─── AJOUT NOUVEL ARTICLE ─── */}
         {ongletActif === 'NOUVEAU_PRODUIT' && (
           <div className="st-card">
             <p className="st-card-title">Enregistrement initial d'un nouvel article</p>
@@ -363,7 +365,6 @@ const StocksPage = () => {
                       <option key={f.id} value={f.id}>{f.prenom_fournisseur} {f.nom_fournisseur}</option>
                     ))}
                   </select>
-                  {/* ✅ type="button" obligatoire pour ne jamais soumettre le form parent */}
                   <button
                     type="button"
                     className="st-btn-action"
@@ -376,15 +377,15 @@ const StocksPage = () => {
               </div>
 
               <div style={{ gridColumn: '1 / -1', marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="submit" className="st-btn st-btn-success" disabled={loading}>
-                  {loading ? 'Enregistrement...' : '🚀 Enregistrer et Initialiser le Stock'}
+                <button type="submit" className="st-btn st-btn-success" >
+                  🚀 Enregistrer et Initialiser le Stock
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* ─── MOUVEMENTS DE STOCKS ─── formulaire isolé ─── */}
+        {/* ─── MOUVEMENTS DE STOCKS ─── */}
         {ongletActif === 'MOUVEMENT' && (
           <div className="st-card">
             <p className="st-card-title">Déclarer un arrivage ou une perte de marchandise</p>
@@ -441,7 +442,6 @@ const StocksPage = () => {
               <div style={{ gridColumn: '1 / -1', marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
                 <button type="submit" className="st-btn st-btn-primary" disabled={loadingmouvements || !mouvement.produitId}>
                   {loadingmouvements ? 'Validation...' : '💾 Appliquer le mouvement de stock'}
-  
                 </button>
               </div>
             </form>
@@ -449,11 +449,7 @@ const StocksPage = () => {
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          MODAL FOURNISSEURS
-          Rendu HORS de tout <form> — même pattern que FreeSales.jsx
-          Le form interne a son propre onSubmit + e.stopPropagation()
-      ═══════════════════════════════════════════════════════════════ */}
+      {/* ─── MODAL FOURNISSEURS ─── */}
       {estModalOuvert && (
         <div className="st-modal-overlay" onClick={() => setEstModalOuvert(false)}>
           <div className="st-modal" onClick={(e) => e.stopPropagation()}>
@@ -473,7 +469,6 @@ const StocksPage = () => {
 
             <div className="st-modal-body">
               {ongletModal === 'CREER' ? (
-                /* ✅ form autonome avec e.stopPropagation() — jamais lié aux forms de la page */
                 <form onSubmit={handleCreerFournisseur} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div className="st-field" style={{ flex: 1 }}>
@@ -501,8 +496,9 @@ const StocksPage = () => {
                       value={nouveauFournisseur.adresse_fournisseur}
                       onChange={(e) => setNouveauFournisseur({ ...nouveauFournisseur, adresse_fournisseur: e.target.value })} />
                   </div>
-                  <button type="submit" className="st-submit-full" style={{ backgroundColor: '#2ecc71', marginTop: '10px' }}>
-                    ✅ Enregistrer le fournisseur
+                  {/* ✅ CORRIGÉ : Le bouton d'enregistrement du fournisseur possède maintenant son texte et son état de chargement actif */}
+                  <button type="submit" className="st-submit-full" style={{ backgroundColor: '#2ecc71', marginTop: '10px' }} disabled={loading}>
+                    {loading ? 'Création en cours...' : '✅ Créer ce fournisseur'}
                   </button>
                 </form>
               ) : (
