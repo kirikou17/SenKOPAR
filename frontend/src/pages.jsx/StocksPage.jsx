@@ -1,529 +1,1065 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { 
   chargerTousLesProduits,
+  ajouterNouveauProduit
 } from '../features/stocks/stocksSlice';
-import { chargerBoutiquesUtilisateur, selectionnerBoutique } from '../features/shops/shopsSlice';
 import { chargerFournisseurs, ajouterFournisseur } from '../features/stocks/fournisseurSlice'; 
-import { ajouterNouveauProduit } from '../features/stocks/stocksSlice';
 import { enregistrerMouvementStock } from '../features/stocks/mouvementsSlice';
 
-/* ─── STYLES GLOBAUX CSS ─── */
-const STOCK_CSS = `
-  .st-page { padding: 20px 16px; max-width: 1100px; margin: 0 auto; }
-  @media (min-width: 640px) { .st-page { padding: 28px 24px; } }
+/* ─── STYLES MODERNES ET ÉPURÉS ─── */
+const GLOBAL_CSS = `
+  .st-app {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: #1A202C;
+  }
 
-  .st-tabs { display: flex; background: #f1f5f9; border-radius: 10px; padding: 4px; gap: 3px; margin-bottom: 24px; }
+  .st-page {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .st-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    background: #F7FAFC;
+    border: 1px solid #E2E8F0;
+    padding: 4px;
+    margin-bottom: 24px;
+  }
   .st-tab {
-    flex: 1; padding: 10px; border: none; border-radius: 7px;
-    background: transparent; cursor: pointer; font-size: 13px; font-weight: 600;
-    color: #64748b; display: flex; align-items: center; justify-content: center;
-    gap: 6px; transition: all 0.15s ease;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #718096;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    font-family: inherit;
   }
-  .st-tab.active { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-
-  .st-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
-  .st-stat-card { background: #fff; border: 1px solid #e8edf2; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
-  .st-stat-label { font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 700; letter-spacing: 0.05em; }
-  .st-stat-value { font-size: 20px; font-weight: 800; color: #1e293b; }
-
-  .st-card { background: #fff; border-radius: 10px; border: 1px solid #e8edf2; padding: 20px; margin-bottom: 20px; }
-  .st-card-title { font-size: 14px; font-weight: 700; color: #1e293b; margin: 0 0 16px 0; display: flex; justify-content: space-between; align-items: center; }
-
-  .st-table-wrapper { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
-  .st-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-  .st-table th { padding: 12px; border-bottom: 2px solid #f1f5f9; color: #64748b; font-weight: 600; }
-  .st-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; }
-  .st-table tr:hover { background: #f8fafc; }
-
-  .badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
-  .badge-success { background: #d4edda; color: #155724; }
-  .badge-danger { background: #f8d7da; color: #721c24; }
-
-  .st-grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-  .st-field { display: flex; flex-direction: column; gap: 5px; position: relative; }
-  .st-label { font-size: 12px; font-weight: 600; color: #475569; }
-  .st-input, .st-select {
-    width: 100%; padding: 9px 11px; border-radius: 7px; border: 1px solid #e2e8f0;
-    font-size: 13px; color: #1e293b; background: #fafafa; box-sizing: border-box; outline: none;
+  .st-tab:hover {
+    background: rgba(74,144,217,0.05);
   }
-  .st-input:focus, .st-select:focus { border-color: #3498db; background: #fff; }
-
-  .st-input-group { display: flex; gap: 6px; width: 100%; }
-  .st-btn-action {
-    padding: 0 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 7px;
-    cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s; color: #475569;
+  .st-tab.active {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    color: #2D3748;
   }
-  .st-btn-action:hover { background: #e2e8f0; color: #1e293b; }
+  .st-tab .icon { font-size: 18px; }
+  .st-tab .badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: #EDF2F7;
+    color: #718096;
+  }
+  .st-tab.active .badge {
+    background: #EBF5FF;
+    color: #4A90D9;
+  }
+
+  .st-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .st-stat {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    padding: 16px 20px;
+  }
+  .st-stat .label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #A0AEC0;
+  }
+  .st-stat .value {
+    font-size: 24px;
+    font-weight: 800;
+    color: #2D3748;
+    margin-top: 4px;
+  }
+  .st-stat .value .currency {
+    font-size: 14px;
+    font-weight: 500;
+    color: #A0AEC0;
+  }
+  .st-stat .value.danger { color: #EF4444; }
+  .st-stat .value.success { color: #1A7A3A; }
+
+  .st-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    overflow: hidden;
+  }
+  .st-card-header {
+    padding: 16px 20px;
+    background: #F7FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .st-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D3748;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+  }
+  .st-card-title .count {
+    background: #EDF2F7;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #718096;
+  }
+  .st-card-subtitle {
+    font-size: 13px;
+    color: #718096;
+  }
+  .st-card-body {
+    padding: 20px;
+  }
+
+  .st-table-wrap {
+    overflow-x: auto;
+    margin: 0 -20px;
+    padding: 0 20px;
+  }
+  .st-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .st-table th {
+    padding: 12px 8px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #A0AEC0;
+    border-bottom: 1.5px solid #EDF2F7;
+  }
+  .st-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid #EDF2F7;
+    color: #2D3748;
+    vertical-align: middle;
+  }
+  .st-table tr:hover td {
+    background: #F7FAFC;
+  }
+  .st-table .empty {
+    text-align: center;
+    color: #A0AEC0;
+    padding: 32px !important;
+  }
+  .st-table .product-name {
+    font-weight: 600;
+  }
+  .st-table .qty {
+    font-weight: 700;
+  }
+  .st-table .price {
+    font-weight: 500;
+  }
+  .st-table .margin {
+    font-weight: 600;
+    color: #1A7A3A;
+  }
+
+  .st-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+    border: 1px solid;
+  }
+  .st-badge.success {
+    background: #F0FDF4;
+    border-color: #BBF7D0;
+    color: #1A7A3A;
+  }
+  .st-badge.danger {
+    background: #FDF2F2;
+    border-color: #FECACA;
+    color: #9B1C1C;
+  }
+
+  .st-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 640px) {
+    .st-form {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .st-form .full-width {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .st-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .st-field .label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4A5568;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .st-field .label .required {
+    color: #EF4444;
+  }
+  .st-field .label .hint {
+    font-weight: 400;
+    font-size: 12px;
+    color: #A0AEC0;
+    margin-left: auto;
+  }
+  .st-field .input,
+  .st-field .select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #E2E8F0;
+    font-size: 14px;
+    color: #2D3748;
+    background: #FFFFFF;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .st-field .input:hover,
+  .st-field .select:hover {
+    border-color: #CBD5E1;
+  }
+  .st-field .input:focus,
+  .st-field .select:focus {
+    border-color: #4A90D9;
+    box-shadow: 0 0 0 3px rgba(74,144,217,0.1);
+    outline: none;
+  }
+  .st-field .input::placeholder {
+    color: #A0AEC0;
+  }
+  .st-field .select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234A5568' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  .st-input-group {
+    display: flex;
+    gap: 8px;
+  }
+  .st-input-group .input { flex: 1; }
+  .st-input-group .btn-icon {
+    padding: 0 16px;
+    background: #F7FAFC;
+    border: 1.5px solid #E2E8F0;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 600;
+    color: #4A5568;
+    transition: all 0.2s;
+    min-width: 44px;
+    font-family: inherit;
+  }
+  .st-input-group .btn-icon:hover {
+    background: #EDF2F7;
+    border-color: #CBD5E1;
+  }
+
+  .st-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .st-actions .btn {
+    padding: 10px 24px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    color: #FFFFFF;
+  }
+  .st-actions .btn:hover:not(:disabled) {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+  .st-actions .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .st-actions .btn-primary {
+    background: #4A90D9;
+  }
+  .st-actions .btn-success {
+    background: #1A7A3A;
+  }
+
+  .st-alert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid;
+    margin-bottom: 20px;
+  }
+  .st-alert.error {
+    background: #FDF2F2;
+    border-color: #FECACA;
+    color: #9B1C1C;
+  }
+  .st-alert .icon { font-size: 18px; }
+  .st-alert .body { flex: 1; }
+  .st-alert .body strong { font-weight: 600; }
 
   .st-modal-overlay {
-    position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
   }
-  .st-modal { background: #fff; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); overflow: hidden; }
-  .st-modal-header { padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-  .st-modal-header h3 { margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; }
-  .st-modal-close { border: none; background: transparent; font-size: 20px; cursor: pointer; color: #94a3b8; }
-  .st-modal-close:hover { color: #475569; }
-  .st-modal-body { padding: 20px; max-height: 400px; overflow-y: auto; }
-  .st-modal-tabs { display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 16px; }
-  .st-modal-tab { flex: 1; text-align: center; padding: 10px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: #64748b; }
-  .st-modal-tab.active { color: #3498db; border-bottom-color: #3498db; }
+  .st-modal {
+    background: #FFFFFF;
+    width: 100%;
+    max-width: 520px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 24px 48px -12px rgba(0,0,0,0.25);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .st-modal-header {
+    padding: 16px 24px;
+    background: #F7FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .st-modal-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2D3748;
+    margin: 0;
+  }
+  .st-modal-header .close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #A0AEC0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .st-modal-header .close:hover {
+    color: #2D3748;
+    background: #EDF2F7;
+  }
+  .st-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .st-modal-tabs {
+    display: flex;
+    border-bottom: 1px solid #E2E8F0;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+  }
+  .st-modal-tab {
+    flex: 1;
+    padding: 12px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #718096;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .st-modal-tab:hover {
+    color: #4A90D9;
+  }
+  .st-modal-tab.active {
+    color: #4A90D9;
+    border-bottom-color: #4A90D9;
+  }
 
-  .st-item-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
-  .st-item-box { padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-  .st-item-info h4 { margin: 0 0 2px 0; font-size: 13px; font-weight: 600; color: #1e293b; }
-  .st-item-info p { margin: 0; font-size: 12px; color: #64748b; }
+  .st-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+  .st-list .item {
+    padding: 12px 16px;
+    background: #F7FAFC;
+    border: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .st-list .item:hover {
+    background: #EDF2F7;
+  }
+  .st-list .item .info h4 {
+    margin: 0 0 2px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D3748;
+  }
+  .st-list .item .info p {
+    margin: 0;
+    font-size: 13px;
+    color: #718096;
+  }
+  .st-list .item .btn-select {
+    padding: 6px 16px;
+    background: #4A90D9;
+    color: #FFFFFF;
+    border: 1px solid #4A90D9;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .st-list .item .btn-select:hover {
+    background: #3A7BC8;
+  }
+  .st-list .empty {
+    text-align: center;
+    color: #A0AEC0;
+    font-size: 14px;
+    padding: 20px 0;
+  }
 
-  .st-btn { padding: 10px 16px; border: none; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; color: #fff; transition: background 0.1s; }
-  .st-btn-primary { background: #3498db; }
-  .st-btn-primary:hover { background: #2980b9; }
-  .st-btn-success { background: #2ecc71; }
-  .st-btn-success:hover { background: #27ae60; }
-  .st-btn-choose { padding: 6px 12px; background: #3498db; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
-  .st-submit-full { width: 100%; padding: 12px; border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+  @media (max-width: 480px) {
+    .st-page { padding: 16px; }
+    .st-tab .label { display: none; }
+    .st-tab { padding: 10px; }
+    .st-card-body { padding: 16px; }
+    .st-stats { grid-template-columns: 1fr; }
+  }
 `;
 
 const StocksPage = () => {
   const dispatch = useDispatch();
 
-  const { produits = [], statutChargement, erreurStock } = useSelector((state) => state.stocks);
-  const { fournisseursdata = [], loading } = useSelector((state) => state.fournisseurs); 
-  const { loadingmouvements } = useSelector((state) => state.mouvements);
-  const { boutiques = [], boutiqueSelectionnee } = useSelector((state) => state.shops);
-  const idBoutiqueActive = boutiqueSelectionnee ? boutiqueSelectionnee.id : null;
+  const { produits = [], statutChargement, erreurStock } = useSelector((s) => s.stocks);
+  const { fournisseursdata = [], loading } = useSelector((s) => s.fournisseurs);
+  const { loadingmouvements } = useSelector((s) => s.mouvements);
+  const { boutiqueSelectionnee } = useSelector((s) => s.shops);
+
+  const [activeTab, setActiveTab] = useState('INVENTAIRE');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState('CREER');
   
-  const [ongletActif, setOngletActif] = useState('INVENTAIRE');
-  const [estModalOuvert, setEstModalOuvert] = useState(false);
-  const [ongletModal, setOngletModal] = useState('CREER'); 
-  const [nouveauFournisseur, setNouveauFournisseur] = useState({
-    prenom_fournisseur: '',
-    nom_fournisseur: '',
-    tel_fournisseur: '',
-    adresse_fournisseur: ''
+  const [newSupplier, setNewSupplier] = useState({
+    prenom: '', nom: '', tel: '', adresse: ''
   });
 
-  const [nouveauProduit, setNouveauProduit] = useState({
-    nom_produit: '', stock_quantite: 0, prix_d_achat: '', prix_de_vente: '', alert_stock: 5, fournisseur: ''
+  const [newProduct, setNewProduct] = useState({
+    nom: '', stock: 0, prixAchat: '', prixVente: '', alerte: 5, fournisseur: ''
   });
 
-  const [mouvement, setMouvement] = useState({
-    produitId: '', type_mouvement: 'ENTREE', quantite: 1, motif: '', nouveau_prix_achat: '', nouveau_prix_vente: ''
+  const [movement, setMovement] = useState({
+    produitId: '', type: 'ENTREE', quantite: 1, motif: '', nouveauPrixAchat: '', nouveauPrixVente: ''
   });
+
+  const stats = useMemo(() => {
+    const totalAchat = produits.reduce((sum, p) => sum + (p.stock_quantite * p.prix_d_achat), 0);
+    const totalVente = produits.reduce((sum, p) => sum + (p.stock_quantite * p.prix_de_vente), 0);
+    const benefice = totalVente - totalAchat;
+    const enAlerte = produits.filter(p => p.stock_quantite <= p.alert_stock).length;
+    return { totalAchat, benefice, enAlerte };
+  }, [produits]);
 
   useEffect(() => {
     dispatch(chargerFournisseurs());
-    if (boutiques.length === 0) {
-      dispatch(chargerBoutiquesUtilisateur());
-    }
-    if (idBoutiqueActive) {
+    if (boutiqueSelectionnee?.id) {
       dispatch(chargerTousLesProduits());
     }
-  }, [dispatch, idBoutiqueActive]); // 💡 Nettoyage : "produits" retiré des dépendances pour éviter les boucles infinies de re-render
+  }, [dispatch, boutiqueSelectionnee]);
 
-  const handleBoutiqueChange = (event) => {
-    const bId = parseInt(event.target.value, 10);
-    const boutiqueTrouvee = boutiques.find((b) => b.id === bId);
-    if (boutiqueTrouvee) {
-      dispatch(selectionnerBoutique(boutiqueTrouvee));
-    }
-  };
-
-  const valeurTotaleStockAchat = produits.reduce((sum, p) => sum + (p.stock_quantite * p.prix_d_achat), 0);
-  const beneficeTheoriqueTotal = produits.reduce((sum, p) => sum + (p.stock_quantite * (p.prix_de_vente - p.prix_d_achat)), 0);
-  const articlesEnAlerte = produits.filter(p => p.stock_quantite <= p.alert_stock).length;
-
-  /* ─── HANDLER ARTICLE ─── */
-  const handleCreerProduit = (e) => {
+  const handleCreateProduct = useCallback((e) => {
     e.preventDefault();
-    if (!idBoutiqueActive) {
-      alert("Erreur : Veuillez sélectionner une boutique active avant de créer un produit.");
+    if (!boutiqueSelectionnee?.id) {
+      alert('Veuillez sélectionner une boutique');
       return;
     }
     const payload = {
-      ...nouveauProduit,
-      boutique: idBoutiqueActive,
-      stock_quantite: Number(nouveauProduit.stock_quantite),
-      prix_d_achat: Number(nouveauProduit.prix_d_achat),
-      prix_de_vente: Number(nouveauProduit.prix_de_vente),
-      alert_stock: Number(nouveauProduit.alert_stock),
-      fournisseur: nouveauProduit.fournisseur ? Number(nouveauProduit.fournisseur) : null
+      nom_produit: newProduct.nom,
+      stock_quantite: Number(newProduct.stock),
+      prix_d_achat: Number(newProduct.prixAchat),
+      prix_de_vente: Number(newProduct.prixVente),
+      alert_stock: Number(newProduct.alerte),
+      fournisseur: newProduct.fournisseur ? Number(newProduct.fournisseur) : null,
+      boutique: boutiqueSelectionnee.id
     };
     dispatch(ajouterNouveauProduit(payload))
       .unwrap()
       .then(() => {
-        dispatch(chargerTousLesProduits()); // Force le rafraîchissement global du stock
-        setOngletActif('INVENTAIRE');
-        setNouveauProduit({ nom_produit: '', stock_quantite: 0, prix_d_achat: '', prix_de_vente: '', alert_stock: 5, fournisseur: '' });
+        dispatch(chargerTousLesProduits());
+        setActiveTab('INVENTAIRE');
+        setNewProduct({ nom: '', stock: 0, prixAchat: '', prixVente: '', alerte: 5, fournisseur: '' });
       })
-      .catch((err) => {
-        console.error("Erreur d'enregistrement de l'article :", err);
-      });
-  };
+      .catch(console.error);
+  }, [newProduct, boutiqueSelectionnee, dispatch]);
 
-  /* ─── HANDLER MOUVEMENT ─── */
-  const handleEnregistrerMouvement = (e) => {
+  const handleCreateSupplier = useCallback((e) => {
     e.preventDefault();
     const payload = {
-      produit: Number(mouvement.produitId),
-      type_mouvement: mouvement.type_mouvement,
-      quantite: Number(mouvement.quantite),
-      motif: mouvement.motif || null,
-      nouveau_prix_achat: mouvement.nouveau_prix_achat ? Number(mouvement.nouveau_prix_achat) : null,
-      nouveau_prix_vente: mouvement.nouveau_prix_vente ? Number(mouvement.nouveau_prix_vente) : null,
+      prenom_fournisseur: newSupplier.prenom,
+      nom_fournisseur: newSupplier.nom,
+      tel_fournisseur: newSupplier.tel,
+      adresse_fournisseur: newSupplier.adresse,
+      boutique: boutiqueSelectionnee?.id
+    };
+    dispatch(ajouterFournisseur(payload))
+      .unwrap()
+      .then((supplier) => {
+        if (supplier?.id) {
+          setNewProduct(prev => ({ ...prev, fournisseur: supplier.id }));
+        }
+        setNewSupplier({ prenom: '', nom: '', tel: '', adresse: '' });
+        setModalOpen(false);
+      })
+      .catch(console.error);
+  }, [newSupplier, boutiqueSelectionnee, dispatch]);
+
+  const handleMovement = useCallback((e) => {
+    e.preventDefault();
+    const payload = {
+      produit: Number(movement.produitId),
+      type_mouvement: movement.type,
+      quantite: Number(movement.quantite),
+      motif: movement.motif || null,
+      nouveau_prix_achat: movement.nouveauPrixAchat ? Number(movement.nouveauPrixAchat) : null,
+      nouveau_prix_vente: movement.nouveauPrixVente ? Number(movement.nouveauPrixVente) : null,
     };
     dispatch(enregistrerMouvementStock(payload))
       .unwrap()
       .then(() => {
         dispatch(chargerTousLesProduits());
-        setOngletActif('INVENTAIRE');
-        setMouvement({ produitId: '', type_mouvement: 'ENTREE', quantite: 1, motif: '', nouveau_prix_achat: '', nouveau_prix_vente: '' });
+        setActiveTab('INVENTAIRE');
+        setMovement({ produitId: '', type: 'ENTREE', quantite: 1, motif: '', nouveauPrixAchat: '', nouveauPrixVente: '' });
       })
-      .catch((err) => {
-        console.error("Erreur lors du mouvement de stock :", err);
-      });
-  };
+      .catch(console.error);
+  }, [movement, dispatch]);
 
-  /* ─── HANDLER FOURNISSEUR ─── */
-  const handleCreerFournisseur = (e) => {
-    e.preventDefault();
-    e.stopPropagation(); 
-    const payload = { ...nouveauFournisseur, boutique: idBoutiqueActive };
-    dispatch(ajouterFournisseur(payload))
-      .unwrap()
-      .then((fournisseurCree) => {
-        if (fournisseurCree?.id) {
-          setNouveauProduit((prev) => ({ ...prev, fournisseur: fournisseurCree.id }));
-        }
-        setNouveauFournisseur({ prenom_fournisseur: '', nom_fournisseur: '', tel_fournisseur: '', adresse_fournisseur: '' });
-        setEstModalOuvert(false);
-      })
-      .catch((erreur) => {
-        console.error("Erreur lors de la création du fournisseur :", erreur);
-      });
-  };
+  const tabs = [
+    { key: 'INVENTAIRE', icon: '📦', label: 'État des stocks' },
+    { key: 'NOUVEAU_PRODUIT', icon: '➕', label: 'Nouvel article' },
+    { key: 'MOUVEMENT', icon: '🔄', label: 'Mouvement' },
+  ];
 
   return (
     <DashboardLayout>
-      <style>{STOCK_CSS}</style>
+      <style>{GLOBAL_CSS}</style>
 
-      {/* ─── SÉLECTEUR BOUTIQUE ─── */}
-      <div style={pageStyles.selectorCard}>
-        <label htmlFor="boutique-select" style={pageStyles.label}>🏪 Boutique active :</label>
-        {statutChargement && boutiques.length === 0 ? (
-          <p style={pageStyles.loadingText}>Chargement des points de vente...</p>
-        ) : (
-          <select
-            id="boutique-select"
-            value={boutiqueSelectionnee ? boutiqueSelectionnee.id : ''}
-            onChange={handleBoutiqueChange}
-            style={pageStyles.select}
-            disabled={boutiques.length <= 1} // ✅ CORRIGÉ : Désactivé uniquement s'il n'y a qu'une boutique
-          >
-            {boutiques.length === 0 ? (
-              <option value="">Aucune boutique trouvée</option>
-            ) : (
-              boutiques.map((b) => (
-                <option key={b.id} value={b.id}>{b.nom_boutique}</option>
-              ))
-            )}
-          </select>
-        )}
-      </div>
-
-      <div className="st-page">
-        {/* ─── ONGLETS PRINCIPAUX ─── */}
-        <div className="st-tabs">
-          <button type="button" className={`st-tab ${ongletActif === 'INVENTAIRE' ? 'active' : ''}`} onClick={() => setOngletActif('INVENTAIRE')}>📦 État des Stocks</button>
-          <button type="button" className={`st-tab ${ongletActif === 'NOUVEAU_PRODUIT' ? 'active' : ''}`} onClick={() => setOngletActif('NOUVEAU_PRODUIT')}>➕ Ajouter un Article</button>
-          <button type="button" className={`st-tab ${ongletActif === 'MOUVEMENT' ? 'active' : ''}`} onClick={() => setOngletActif('MOUVEMENT')}>🔄 Mouvement / Arrivage</button>
-        </div>
-
-        {erreurStock && (
-          <div style={{ padding: '12px', background: '#f8d7da', color: '#721c24', borderRadius: '8px', marginBottom: '16px', fontSize: '13px' }}>
-            ⚠️ <strong>Erreur :</strong> {erreurStock}
+      <div className="st-app">
+        <div className="st-page">
+          {/* TABS */}
+          <div className="st-tabs">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                className={`st-tab ${activeTab === tab.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <span className="icon">{tab.icon}</span>
+                <span className="label">{tab.label}</span>
+                {tab.key === 'INVENTAIRE' && (
+                  <span className="badge">{produits.length}</span>
+                )}
+              </button>
+            ))}
           </div>
-        )}
 
-        {/* ─── INVENTAIRE ─── */}
-        {ongletActif === 'INVENTAIRE' && (
-          <>
-            <div className="st-stats-grid">
-              <div className="st-stat-card">
-                <span className="st-stat-label">Valeur du Stock (Achat)</span>
-                <span className="st-stat-value">{valeurTotaleStockAchat.toLocaleString()} F CFA</span>
-              </div>
-              <div className="st-stat-card">
-                <span className="st-stat-label">Bénéfice Latent Estimé</span>
-                <span className="st-stat-value" style={{ color: '#2ecc71' }}>+{beneficeTheoriqueTotal.toLocaleString()} F CFA</span>
-              </div>
-              <div className="st-stat-card">
-                <span className="st-stat-label">Alertes Rupture</span>
-                <span className="st-stat-value" style={{ color: articlesEnAlerte > 0 ? '#ef4444' : '#1e293b' }}>
-                  {articlesEnAlerte} {articlesEnAlerte > 1 ? 'articles' : 'article'}
-                </span>
+          {/* ERROR */}
+          {erreurStock && (
+            <div className="st-alert error">
+              <span className="icon">⚠️</span>
+              <div className="body">
+                <strong>Erreur :</strong> {erreurStock}
               </div>
             </div>
+          )}
 
-            <div className="st-card">
-              <div className="st-card-title">
-                <span>Liste des articles en magasin</span>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>{produits.length} références</span>
-              </div>
-              <div className="st-table-wrapper">
-                <table className="st-table">
-                  <thead>
-                    <tr>
-                      <th>Désignation</th>
-                      <th>Quantité dispo</th>
-                      <th>Prix d'achat</th>
-                      <th>Prix de vente</th>
-                      <th>Marge / Unité</th>
-                      <th>Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {produits.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>
-                          Aucun produit en stock pour cette boutique.
-                        </td>
-                      </tr>
-                    ) : (
-                      produits.map((p) => {
-                        const estEnAlerte = p.stock_quantite <= p.alert_stock;
-                        return (
-                          <tr key={p.id}>
-                            <td style={{ fontWeight: '600', color: '#1e293b' }}>{p.nom_produit}</td>
-                            <td style={{ fontWeight: '700' }}>{p.stock_quantite} pcs</td>
-                            <td>{p.prix_d_achat.toLocaleString()} F</td>
-                            <td>{p.prix_de_vente.toLocaleString()} F</td>
-                            <td style={{ color: '#27ae60', fontWeight: '600' }}>
-                              +{(p.prix_de_vente - p.prix_d_achat).toLocaleString()} F
-                            </td>
-                            <td>
-                              <span className={`badge ${estEnAlerte ? 'badge-danger' : 'badge-success'}`}>
-                                {estEnAlerte ? '⚠️ Réappro' : '✅ Correct'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* ─── AJOUT NOUVEL ARTICLE ─── */}
-        {ongletActif === 'NOUVEAU_PRODUIT' && (
-          <div className="st-card">
-            <p className="st-card-title">Enregistrement initial d'un nouvel article</p>
-            <form onSubmit={handleCreerProduit} className="st-grid-form">
-              <div className="st-field">
-                <label className="st-label">Désignation du produit *</label>
-                <input required className="st-input" type="text" placeholder="Ex: Sac de Riz 50kg..."
-                  value={nouveauProduit.nom_produit}
-                  onChange={(e) => setNouveauProduit({...nouveauProduit, nom_produit: e.target.value})} />
-              </div>
-              <div className="st-field">
-                <label className="st-label">Stock Initial *</label>
-                <input required className="st-input" type="number" min="0" placeholder="Ex: 50"
-                  value={nouveauProduit.stock_quantite}
-                  onChange={(e) => setNouveauProduit({...nouveauProduit, stock_quantite: e.target.value})} />
-              </div>
-              <div className="st-field">
-                <label className="st-label">Prix d'Achat Unitaire (FCFA) *</label>
-                <input required className="st-input" type="number" min="0" placeholder="Ex: 17500"
-                  value={nouveauProduit.prix_d_achat}
-                  onChange={(e) => setNouveauProduit({...nouveauProduit, prix_d_achat: e.target.value})} />
-              </div>
-              <div className="st-field">
-                <label className="st-label">Prix de Vente Unitaire (FCFA) *</label>
-                <input required className="st-input" type="number" min="0" placeholder="Ex: 22000"
-                  value={nouveauProduit.prix_de_vente}
-                  onChange={(e) => setNouveauProduit({...nouveauProduit, prix_de_vente: e.target.value})} />
-              </div>
-              <div className="st-field">
-                <label className="st-label">Seuil d'alerte de stock *</label>
-                <input required className="st-input" type="number" min="0"
-                  value={nouveauProduit.alert_stock}
-                  onChange={(e) => setNouveauProduit({...nouveauProduit, alert_stock: e.target.value})} />
-              </div>
-
-              <div className="st-field">
-                <label className="st-label">Fournisseur associé</label>
-                <div className="st-input-group">
-                  <select className="st-select" value={nouveauProduit.fournisseur}
-                    onChange={(e) => setNouveauProduit({...nouveauProduit, fournisseur: e.target.value})}>
-                    <option value="">— Aucun fournisseur —</option>
-                    {fournisseursdata.map(f => (
-                      <option key={f.id} value={f.id}>{f.prenom_fournisseur} {f.nom_fournisseur}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="st-btn-action"
-                    title="Gérer les fournisseurs"
-                    onClick={() => { setOngletModal('CREER'); setEstModalOuvert(true); }}
-                  >
-                    🚚+
-                  </button>
+          {/* TAB: INVENTAIRE */}
+          {activeTab === 'INVENTAIRE' && (
+            <>
+              <div className="st-stats">
+                <div className="st-stat">
+                  <div className="label">Valeur du stock (achat)</div>
+                  <div className="value">
+                    {stats.totalAchat.toLocaleString()}
+                    <span className="currency"> FCFA</span>
+                  </div>
+                </div>
+                <div className="st-stat">
+                  <div className="label">Bénéfice latent</div>
+                  <div className="value success">
+                    +{stats.benefice.toLocaleString()}
+                    <span className="currency"> FCFA</span>
+                  </div>
+                </div>
+                <div className="st-stat">
+                  <div className="label">Alertes rupture</div>
+                  <div className={`value ${stats.enAlerte > 0 ? 'danger' : ''}`}>
+                    {stats.enAlerte} {stats.enAlerte > 1 ? 'articles' : 'article'}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ gridColumn: '1 / -1', marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="submit" className="st-btn st-btn-success" >
-                  🚀 Enregistrer et Initialiser le Stock
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* ─── MOUVEMENTS DE STOCKS ─── */}
-        {ongletActif === 'MOUVEMENT' && (
-          <div className="st-card">
-            <p className="st-card-title">Déclarer un arrivage ou une perte de marchandise</p>
-            <form onSubmit={handleEnregistrerMouvement} className="st-grid-form">
-              <div className="st-field">
-                <label className="st-label">Sélectionner le produit affecté *</label>
-                <select required className="st-select" value={mouvement.produitId}
-                  onChange={(e) => setMouvement({...mouvement, produitId: e.target.value})}>
-                  <option value="">— Choisir un article —</option>
-                  {produits.map(p => (
-                    <option key={p.id} value={p.id}>{p.nom_produit} (Dispo: {p.stock_quantite})</option>
-                  ))}
-                </select>
-              </div>
-              <div className="st-field">
-                <label className="st-label">Type de flux de stock *</label>
-                <select className="st-select" value={mouvement.type_mouvement}
-                  onChange={(e) => setMouvement({...mouvement, type_mouvement: e.target.value, nouveau_prix_achat: '', nouveau_prix_vente: ''})}>
-                  <option value="ENTREE">📦 Entrée / Nouvel Arrivage</option>
-                  <option value="PERTE">⚠️ Perte / Avarie / Vol</option>
-                  <option value="RETOUR">🔄 Retour Client</option>
-                </select>
-              </div>
-              <div className="st-field">
-                <label className="st-label">Quantité impactée *</label>
-                <input required className="st-input" type="number" min="1"
-                  value={mouvement.quantite}
-                  onChange={(e) => setMouvement({...mouvement, quantite: e.target.value})} />
-              </div>
-              <div className="st-field">
-                <label className="st-label">Motif / Commentaire</label>
-                <input className="st-input" type="text" placeholder="Commentaire..."
-                  value={mouvement.motif}
-                  onChange={(e) => setMouvement({...mouvement, motif: e.target.value})} />
-              </div>
-
-              {mouvement.type_mouvement === 'ENTREE' && (
-                <>
-                  <div className="st-field">
-                    <label className="st-label">Nouveau prix d'achat unitaire (Optionnel)</label>
-                    <input className="st-input" type="number" placeholder="Inchangé si vide"
-                      value={mouvement.nouveau_prix_achat}
-                      onChange={(e) => setMouvement({...mouvement, nouveau_prix_achat: e.target.value})} />
+              <div className="st-card">
+                <div className="st-card-header">
+                  <h3 className="st-card-title">
+                    📋 Catalogue des articles
+                    <span className="count">{produits.length}</span>
+                  </h3>
+                  <span className="st-card-subtitle">
+                    {produits.filter(p => p.stock_quantite > 0).length} en stock
+                  </span>
+                </div>
+                <div className="st-card-body">
+                  <div className="st-table-wrap">
+                    <table className="st-table">
+                      <thead>
+                        <tr>
+                          <th>Désignation</th>
+                          <th style={{ textAlign: 'center' }}>Qté</th>
+                          <th style={{ textAlign: 'right' }}>Prix achat</th>
+                          <th style={{ textAlign: 'right' }}>Prix vente</th>
+                          <th style={{ textAlign: 'right' }}>Marge</th>
+                          <th style={{ textAlign: 'center' }}>Statut</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {produits.length === 0 ? (
+                          <tr>
+                            <td colSpan="6" className="empty">Aucun produit en stock</td>
+                          </tr>
+                        ) : (
+                          produits.map(p => {
+                            const isAlert = p.stock_quantite <= p.alert_stock;
+                            return (
+                              <tr key={p.id}>
+                                <td className="product-name">{p.nom_produit}</td>
+                                <td className="qty" style={{ textAlign: 'center' }}>
+                                  {p.stock_quantite}
+                                </td>
+                                <td className="price" style={{ textAlign: 'right' }}>
+                                  {p.prix_d_achat.toLocaleString()}
+                                </td>
+                                <td className="price" style={{ textAlign: 'right' }}>
+                                  {p.prix_de_vente.toLocaleString()}
+                                </td>
+                                <td className="margin" style={{ textAlign: 'right' }}>
+                                  +{(p.prix_de_vente - p.prix_d_achat).toLocaleString()}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <span className={`st-badge ${isAlert ? 'danger' : 'success'}`}>
+                                    {isAlert ? '⚠️ Alerte' : '✅ OK'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="st-field">
-                    <label className="st-label">Nouveau prix de vente unitaire (Optionnel)</label>
-                    <input className="st-input" type="number" placeholder="Inchangé si vide"
-                      value={mouvement.nouveau_prix_vente}
-                      onChange={(e) => setMouvement({...mouvement, nouveau_prix_vente: e.target.value})} />
-                  </div>
-                </>
-              )}
-
-              <div style={{ gridColumn: '1 / -1', marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="submit" className="st-btn st-btn-primary" disabled={loadingmouvements || !mouvement.produitId}>
-                  {loadingmouvements ? 'Validation...' : '💾 Appliquer le mouvement de stock'}
-                </button>
+                </div>
               </div>
-            </form>
-          </div>
-        )}
+            </>
+          )}
+
+          {/* TAB: NOUVEAU PRODUIT */}
+          {activeTab === 'NOUVEAU_PRODUIT' && (
+            <div className="st-card">
+              <div className="st-card-header">
+                <h3 className="st-card-title">➕ Nouvel article</h3>
+              </div>
+              <div className="st-card-body">
+                <form onSubmit={handleCreateProduct} className="st-form">
+                  <div className="st-field full-width">
+                    <label className="label">
+                      Désignation <span className="required">*</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="text"
+                      placeholder="Ex: Sac de riz 50kg"
+                      required
+                      value={newProduct.nom}
+                      onChange={(e) => setNewProduct({ ...newProduct, nom: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="st-field">
+                    <label className="label">
+                      Stock initial <span className="required">*</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      required
+                      value={newProduct.stock}
+                      onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="st-field">
+                    <label className="label">
+                      Prix d'achat <span className="required">*</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      placeholder="Ex: 17500"
+                      required
+                      value={newProduct.prixAchat}
+                      onChange={(e) => setNewProduct({ ...newProduct, prixAchat: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="st-field">
+                    <label className="label">
+                      Prix de vente <span className="required">*</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      placeholder="Ex: 22000"
+                      required
+                      value={newProduct.prixVente}
+                      onChange={(e) => setNewProduct({ ...newProduct, prixVente: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="st-field">
+                    <label className="label">
+                      Seuil d'alerte <span className="required">*</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      placeholder="5"
+                      required
+                      value={newProduct.alerte}
+                      onChange={(e) => setNewProduct({ ...newProduct, alerte: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="st-field">
+                    <label className="label">Fournisseur</label>
+                    <div className="st-input-group">
+                      <select
+                        className="select"
+                        value={newProduct.fournisseur}
+                        onChange={(e) => setNewProduct({ ...newProduct, fournisseur: e.target.value })}
+                      >
+                        <option value="">— Aucun —</option>
+                        {fournisseursdata.map(f => (
+                          <option key={f.id} value={f.id}>
+                            {f.prenom_fournisseur} {f.nom_fournisseur}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        title="Gérer les fournisseurs"
+                        onClick={() => { setModalTab('CREER'); setModalOpen(true); }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="full-width st-actions">
+                    <button type="submit" className="btn btn-success">
+                      🚀 Enregistrer l'article
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: MOUVEMENT */}
+          {activeTab === 'MOUVEMENT' && (
+            <div className="st-card">
+              <div className="st-card-header">
+                <h3 className="st-card-title">🔄 Mouvement de stock</h3>
+              </div>
+              <div className="st-card-body">
+                <form onSubmit={handleMovement} className="st-form">
+                  <div className="st-field full-width">
+                    <label className="label">
+                      Produit <span className="required">*</span>
+                    </label>
+                    <select
+                      className="select"
+                      required
+                      value={movement.produitId}
+                      onChange={(e) => setMovement({ ...movement, produitId: e.target.value })}
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {produits.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.nom_produit} (Stock: {p.stock_quantite})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="st-field">
+                    <label className="label">Type <span className="required">*</span></label>
+                    <select
+                      className="select"
+                      value={movement.type}
+                      onChange={(e) => setMovement({ 
+                        ...movement, 
+                        type: e.target.value,
+                        nouveauPrixAchat: '',
+                        nouveauPrixVente: ''
+                      })}
+                    >
+                      <option value="ENTREE">📦 Entrée</option>
+                      <option value="PERTE">⚠️ Perte</option>
+                      <option value="RETOUR">🔄 Retour</option>
+                    </select>
+                  </div>
+
+                  <div className="st-field">
+                    <label className="label">
+                      Quantité <span className="required">*</span>
+                    </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="1"
+                      required
+                      value={movement.quantite}
+                      onChange={(e) => setMovement({ ...movement, quantite: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="st-field">
+                    <label className="label">Motif</label>
+                    <input
+                      className="input"
+                      type="text"
+                      placeholder="Ex: Réapprovisionnement"
+                      value={movement.motif}
+                      onChange={(e) => setMovement({ ...movement, motif: e.target.value })}
+                    />
+                  </div>
+
+                  {movement.type === 'ENTREE' && (
+                    <>
+                      <div className="st-field">
+                        <label className="label">
+                          Nouveau prix d'achat
+                          <span className="hint">optionnel</span>
+                        </label>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder="Inchangé si vide"
+                          value={movement.nouveauPrixAchat}
+                          onChange={(e) => setMovement({ ...movement, nouveauPrixAchat: e.target.value })}
+                        />
+                      </div>
+                      <div className="st-field">
+                        <label className="label">
+                          Nouveau prix de vente
+                          <span className="hint">optionnel</span>
+                        </label>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder="Inchangé si vide"
+                          value={movement.nouveauPrixVente}
+                          onChange={(e) => setMovement({ ...movement, nouveauPrixVente: e.target.value })}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="full-width st-actions">
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={loadingmouvements || !movement.produitId}
+                    >
+                      {loadingmouvements ? '⏳ Enregistrement...' : '💾 Appliquer le mouvement'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ─── MODAL FOURNISSEURS ─── */}
-      {estModalOuvert && (
-        <div className="st-modal-overlay" onClick={() => setEstModalOuvert(false)}>
+      {/* MODAL FOURNISSEURS */}
+      {modalOpen && (
+        <div className="st-modal-overlay" onClick={() => setModalOpen(false)}>
           <div className="st-modal" onClick={(e) => e.stopPropagation()}>
             <div className="st-modal-header">
-              <h3>Gestion des Fournisseurs</h3>
-              <button type="button" className="st-modal-close" onClick={() => setEstModalOuvert(false)}>×</button>
+              <h3>🚚 Gestion des fournisseurs</h3>
+              <button className="close" onClick={() => setModalOpen(false)}>✕</button>
             </div>
-
             <div className="st-modal-tabs">
-              <button type="button" className={`st-modal-tab ${ongletModal === 'CREER' ? 'active' : ''}`} onClick={() => setOngletModal('CREER')}>
-                ➕ Nouveau Fournisseur
+              <button
+                className={`st-modal-tab ${modalTab === 'CREER' ? 'active' : ''}`}
+                onClick={() => setModalTab('CREER')}
+              >
+                ➕ Nouveau
               </button>
-              <button type="button" className={`st-modal-tab ${ongletModal === 'LISTE' ? 'active' : ''}`} onClick={() => setOngletModal('LISTE')}>
-                📋 Parcourir ({fournisseursdata.length})
+              <button
+                className={`st-modal-tab ${modalTab === 'LISTE' ? 'active' : ''}`}
+                onClick={() => setModalTab('LISTE')}
+              >
+                📋 Sélectionner ({fournisseursdata.length})
               </button>
             </div>
-
             <div className="st-modal-body">
-              {ongletModal === 'CREER' ? (
-                <form onSubmit={handleCreerFournisseur} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div className="st-field" style={{ flex: 1 }}>
-                      <label className="st-label">Prénom *</label>
-                      <input className="st-input" type="text" required
-                        value={nouveauFournisseur.prenom_fournisseur}
-                        onChange={(e) => setNouveauFournisseur({ ...nouveauFournisseur, prenom_fournisseur: e.target.value })} />
+              {modalTab === 'CREER' ? (
+                <form onSubmit={handleCreateSupplier} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="st-field">
+                      <label className="label">Prénom <span className="required">*</span></label>
+                      <input
+                        className="input"
+                        type="text"
+                        required
+                        placeholder="Ex: Mamadou"
+                        value={newSupplier.prenom}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, prenom: e.target.value })}
+                      />
                     </div>
-                    <div className="st-field" style={{ flex: 1 }}>
-                      <label className="st-label">Nom *</label>
-                      <input className="st-input" type="text" required
-                        value={nouveauFournisseur.nom_fournisseur}
-                        onChange={(e) => setNouveauFournisseur({ ...nouveauFournisseur, nom_fournisseur: e.target.value })} />
+                    <div className="st-field">
+                      <label className="label">Nom <span className="required">*</span></label>
+                      <input
+                        className="input"
+                        type="text"
+                        required
+                        placeholder="Ex: Diallo"
+                        value={newSupplier.nom}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, nom: e.target.value })}
+                      />
                     </div>
                   </div>
                   <div className="st-field">
-                    <label className="st-label">Téléphone</label>
-                    <input className="st-input" type="tel" placeholder="Ex: 77XXXXXXX"
-                      value={nouveauFournisseur.tel_fournisseur}
-                      onChange={(e) => setNouveauFournisseur({ ...nouveauFournisseur, tel_fournisseur: e.target.value })} />
+                    <label className="label">Téléphone</label>
+                    <input
+                      className="input"
+                      type="tel"
+                      placeholder="77 123 45 67"
+                      value={newSupplier.tel}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, tel: e.target.value })}
+                    />
                   </div>
                   <div className="st-field">
-                    <label className="st-label">Adresse</label>
-                    <input className="st-input" type="text" placeholder="Ex: Marché Central, Bakel"
-                      value={nouveauFournisseur.adresse_fournisseur}
-                      onChange={(e) => setNouveauFournisseur({ ...nouveauFournisseur, adresse_fournisseur: e.target.value })} />
+                    <label className="label">Adresse</label>
+                    <input
+                      className="input"
+                      type="text"
+                      placeholder="Ex: Marché Central, Dakar"
+                      value={newSupplier.adresse}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, adresse: e.target.value })}
+                    />
                   </div>
-                  {/* ✅ CORRIGÉ : Le bouton d'enregistrement du fournisseur possède maintenant son texte et son état de chargement actif */}
-                  <button type="submit" className="st-submit-full" style={{ backgroundColor: '#2ecc71', marginTop: '10px' }} disabled={loading}>
-                    {loading ? 'Création en cours...' : '✅ Créer ce fournisseur'}
+                  <button
+                    type="submit"
+                    className="btn btn-success"
+                    style={{ width: '100%', marginTop: '4px' }}
+                    disabled={loading}
+                  >
+                    {loading ? '⏳ Création...' : '✅ Créer le fournisseur'}
                   </button>
                 </form>
               ) : (
-                <ul className="st-item-list">
+                <ul className="st-list">
                   {fournisseursdata.length > 0 ? (
                     fournisseursdata.map(f => (
-                      <li key={f.id} className="st-item-box">
-                        <div className="st-item-info">
+                      <li key={f.id} className="item">
+                        <div className="info">
                           <h4>{f.prenom_fournisseur} {f.nom_fournisseur}</h4>
-                          <p>📞 {f.tel_fournisseur || 'Aucun contact'} {f.adresse_fournisseur ? `· 📍 ${f.adresse_fournisseur}` : ''}</p>
+                          <p>
+                            📞 {f.tel_fournisseur || 'Non renseigné'}
+                            {f.adresse_fournisseur && ` · 📍 ${f.adresse_fournisseur}`}
+                          </p>
                         </div>
                         <button
-                          type="button"
-                          className="st-btn-choose"
+                          className="btn-select"
                           onClick={() => {
-                            setNouveauProduit((prev) => ({ ...prev, fournisseur: f.id }));
-                            setEstModalOuvert(false);
+                            setNewProduct(prev => ({ ...prev, fournisseur: f.id }));
+                            setModalOpen(false);
                           }}
                         >
-                          Choisir →
+                          Choisir
                         </button>
                       </li>
                     ))
                   ) : (
-                    <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>Aucun fournisseur enregistré.</p>
+                    <li className="empty">Aucun fournisseur enregistré</li>
                   )}
                 </ul>
               )}
@@ -533,12 +1069,6 @@ const StocksPage = () => {
       )}
     </DashboardLayout>
   );
-};
-
-const pageStyles = {
-  selectorCard: { background: '#fff', padding: '12px 24px', borderBottom: '1px solid #e8edf2', display: 'flex', alignItems: 'center', gap: '12px' },
-  label: { fontSize: '13px', fontWeight: '700', color: '#334155' },
-  select: { padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontSize: '13px', fontWeight: '600', color: '#1e293b', outline: 'none', cursor: 'pointer' }
 };
 
 export default StocksPage;

@@ -1,788 +1,1415 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { createPortal } from 'react-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { enregistrerNouvelleVente, nettoyerStatutVente } from '../features/sales/salesSlices';
 import { chargerProduitsBoutique } from '../features/stocks/stocksSlice';
 import { chargerClientsBoutique, ajouterClient } from '../features/sales/clientsSlice';
-import { chargerBoutiquesUtilisateur, selectionnerBoutique } from '../features/shops/shopsSlice';
 
-/* ─── STYLES GLOBAUX CSS (MOBILE-FIRST) ─── */
+/* ─── STYLES MODERNES ET ÉPURÉS ─── */
 const GLOBAL_CSS = `
-  .fs-page { padding: 20px 16px; max-width: 960px; margin: 0 auto; }
-  @media (min-width: 640px) { .fs-page { padding: 28px 24px; } }
+  .fs-app {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: #1A202C;
+  }
 
-  /* Segment tabs */
-  .fs-tabs { display: flex; background: #f1f5f9; border-radius: 10px; padding: 4px; gap: 3px; margin-bottom: 24px; }
+  .fs-page {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .fs-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    background: #F7FAFC;
+    border: 1px solid #E2E8F0;
+    padding: 4px;
+    margin-bottom: 24px;
+  }
   .fs-tab {
-    flex: 1; padding: 9px 8px; border: none; border-radius: 7px;
-    background: transparent; cursor: pointer; font-size: 12px; font-weight: 600;
-    color: #64748b; display: flex; align-items: center; justify-content: center;
-    gap: 5px; transition: all 0.15s ease; white-space: nowrap;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #718096;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    font-family: inherit;
   }
-  .fs-tab.active { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  @media (max-width: 480px) { .fs-tab span.fs-tab-label { display: none; } .fs-tab { padding: 10px; } }
-
-  /* Page header */
-  .fs-header { margin-bottom: 20px; }
-  .fs-header h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; color: #1e293b; }
-  .fs-header p  { margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.5; }
-
-  /* Alerts */
-  .fs-alert { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 9px; margin-bottom: 16px; font-size: 13px; }
-  .fs-alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-  .fs-alert-error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-  .fs-alert-body { flex: 1; }
-  .fs-alert-body strong { display: block; font-size: 13px; }
-  .fs-alert-body span   { font-size: 12px; opacity: 0.8; margin-top: 2px; display: block; }
-  .fs-btn-new { padding: 6px 12px; background: #155724; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; }
-
-  /* Layout 2 colonnes desktop */
-  .fs-layout { display: flex; flex-direction: column; gap: 16px; }
-  @media (min-width: 768px) { .fs-layout { flex-direction: row; align-items: flex-start; } }
-  .fs-main  { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-  .fs-aside { width: 100%; }
-  @media (min-width: 768px) { .fs-aside { width: 300px; flex-shrink: 0; position: sticky; top: 20px; } }
-
-  /* Cards */
-  .fs-card { background: #fff; border-radius: 10px; border: 1px solid #e8edf2; padding: 18px 20px; }
-  .fs-card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #b0bac6; margin: 0 0 14px; }
-
-  /* Champs */
-  .fs-field { display: flex; flex-direction: column; gap: 5px; position: relative; }
-  .fs-label { font-size: 12px; font-weight: 600; color: #475569; }
-  .fs-input, .fs-select {
-    width: 100%; padding: 9px 11px; border-radius: 7px; border: 1px solid #e2e8f0;
-    font-size: 13px; color: #1e293b; background: #fafafa;
-    box-sizing: border-box; outline: none; transition: border-color 0.15s;
+  .fs-tab:hover {
+    background: rgba(74,144,217,0.05);
   }
-  .fs-input:focus, .fs-select:focus { border-color: #94a3b8; background: #fff; }
-  .fs-grid-2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
-  @media (min-width: 520px) { .fs-grid-2 { grid-template-columns: 1fr 1fr; } }
-
-  /* Recherche Client Autocomplete */
-  .fs-search-wrapper { display: flex; gap: 6px; width: 100%; position: relative; }
-  .fs-search-dropdown {
-    position: absolute; top: 100%; left: 0; right: 0; background: #fff;
-    border: 1px solid #cbd5e1; border-radius: 8px; max-height: 180px; overflow-y: auto;
-    z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 4px; padding: 0; list-style: none;
+  .fs-tab.active {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    color: #2D3748;
   }
-  .fs-search-item { padding: 10px 12px; font-size: 13px; cursor: pointer; color: #334155; border-bottom: 1px solid #f1f5f9; }
-  .fs-search-item:hover { background: #f8fafc; color: #1e293b; }
-  .fs-search-empty { padding: 12px; font-size: 12px; color: #94a3b8; text-align: center; }
-  .fs-btn-action {
-    padding: 0 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 7px;
-    cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s; color: #475569;
+  .fs-tab .icon { font-size: 18px; }
+
+  .fs-header {
+    margin-bottom: 24px;
   }
-  .fs-btn-action:hover { background: #e2e8f0; color: #1e293b; }
-
-  /* Modals */
-  .fs-modal-overlay {
-    position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+  .fs-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1A202C;
+    margin: 0 0 4px 0;
   }
-  .fs-modal { background: #fff; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); overflow: hidden; }
-  .fs-modal-header { padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-  .fs-modal-header h3 { margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; }
-  .fs-modal-close { border: none; background: transparent; font-size: 20px; cursor: pointer; color: #94a3b8; }
-  .fs-modal-close:hover { color: #475569; }
-  .fs-modal-body { padding: 20px; max-height: 400px; overflow-y: auto; }
-  .fs-modal-tabs { display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 16px; }
-  .fs-modal-tab { flex: 1; text-align: center; padding: 10px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: #64748b; }
-  .fs-modal-tab.active { color: #3498db; border-bottom-color: #3498db; }
+  .fs-header p {
+    font-size: 14px;
+    color: #718096;
+    margin: 0;
+  }
 
-  /* Liste Clients Interne au Modal */
-  .fs-client-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
-  .fs-client-item { padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-  .fs-client-info h4 { margin: 0 0 2px 0; font-size: 13px; font-weight: 600; color: #1e293b; }
-  .fs-client-info p { margin: 0; font-size: 12px; color: #64748b; }
+  .fs-alert {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border: 1px solid;
+    margin-bottom: 24px;
+  }
+  .fs-alert.success {
+    background: #F0FDF4;
+    border-color: #BBF7D0;
+    color: #1A7A3A;
+  }
+  .fs-alert.error {
+    background: #FDF2F2;
+    border-color: #FECACA;
+    color: #9B1C1C;
+  }
+  .fs-alert .icon { font-size: 24px; }
+  .fs-alert .body { flex: 1; }
+  .fs-alert .body strong { display: block; font-size: 14px; }
+  .fs-alert .body span { font-size: 13px; opacity: 0.8; }
+  .fs-alert .action-btn {
+    padding: 8px 16px;
+    background: #1A7A3A;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .fs-alert .action-btn:hover {
+    background: #156B33;
+  }
 
-  /* Lignes articles adaptées pour Mobile-First */
-  .fs-articles-header { display: none; }
+  .fs-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  @media (min-width: 1024px) {
+    .fs-grid {
+      grid-template-columns: 1fr 340px;
+      align-items: start;
+    }
+  }
+
+  .fs-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    overflow: hidden;
+  }
+  .fs-card-header {
+    padding: 16px 20px;
+    background: #F7FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .fs-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D3748;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+  }
+  .fs-card-title .count {
+    background: #EDF2F7;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #718096;
+  }
+  .fs-card-subtitle {
+    font-size: 13px;
+    color: #718096;
+  }
+  .fs-card-body {
+    padding: 20px;
+  }
+
+  .fs-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .fs-field .label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4A5568;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .fs-field .label .required {
+    color: #EF4444;
+  }
+  .fs-field .label .hint {
+    font-weight: 400;
+    font-size: 12px;
+    color: #A0AEC0;
+    margin-left: auto;
+  }
+  .fs-field .input,
+  .fs-field .select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #E2E8F0;
+    font-size: 14px;
+    color: #2D3748;
+    background: #FFFFFF;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .fs-field .input:hover,
+  .fs-field .select:hover {
+    border-color: #CBD5E1;
+  }
+  .fs-field .input:focus,
+  .fs-field .select:focus {
+    border-color: #4A90D9;
+    box-shadow: 0 0 0 3px rgba(74,144,217,0.1);
+    outline: none;
+  }
+  .fs-field .input::placeholder {
+    color: #A0AEC0;
+  }
+  .fs-field .select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234A5568' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  .fs-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
   @media (min-width: 600px) {
-    .fs-articles-header { display: grid; grid-template-columns: 120px 1fr 80px 110px 90px 40px; gap: 10px; padding: 0 4px 8px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px; }
-    .fs-articles-header span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #b0bac6; font-weight: 600; }
+    .fs-grid-2 {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 
-  .fs-ligne {
-    display: flex; flex-direction: column; gap: 12px; padding: 16px;
-    border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;
-    margin-bottom: 16px; position: relative;
+  /* ── RECHERCHE CLIENT AVEC POSITIONNEMENT CORRIGÉ ── */
+  .fs-search-wrapper {
+    position: relative;
+    width: 100%;
   }
-  .fs-ligne-cell { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-  .fs-ligne-cell label { display: block; font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-  .fs-ligne-actions-mobile { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
-  .fs-ligne-total { font-size: 14px; font-weight: 700; color: #1e293b; }
-  .fs-del-btn {
-    padding: 8px 16px; border-radius: 6px; border: 1px solid #fecaca;
-    background: #fff5f5; color: #ef4444; cursor: pointer; font-size: 13px;
-    font-weight: 600; display: flex; align-items: center; gap: 4px;
+  
+  .fs-search {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .fs-search .input { 
+    flex: 1; 
+  }
+  .fs-search .btn-add {
+    padding: 0 16px;
+    background: #F7FAFC;
+    border: 1.5px solid #E2E8F0;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 600;
+    color: #4A5568;
+    transition: all 0.2s;
+    min-width: 44px;
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+  .fs-search .btn-add:hover {
+    background: #EDF2F7;
+    border-color: #CBD5E1;
   }
 
-  @media (min-width: 600px) {
-    .fs-ligne { display: grid; grid-template-columns: 120px 1fr 80px 110px 90px 40px; align-items: center; padding: 10px 4px; background: transparent; border: none; border-bottom: 1px solid #f1f5f9; border-radius: 0; margin-bottom: 0; gap: 10px; }
-    .fs-ligne-cell label { display: none; }
-    .fs-ligne-actions-mobile { display: contents; }
-    .fs-ligne-total { text-align: right; }
-    .fs-del-btn { width: 28px; height: 28px; padding: 0; border-radius: 6px; justify-content: center; }
-    .fs-del-btn span.txt-del { display: none; }
+  /* Dropdown avec positionnement absolu et z-index maximum */
+  .fs-dropdown-portal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 99999;
   }
-
-  /* Récap aside */
-  .fs-add-btn {
-    width: 100%; margin-top: 10px; padding: 10px; background: #f8fafc;
-    border: 1.5px dashed #cbd5e1; border-radius: 8px; cursor: pointer;
-    font-size: 13px; font-weight: 600; color: #64748b;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
+  
+  .fs-dropdown {
+    position: absolute;
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-top: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    max-height: 240px;
+    overflow-y: auto;
+    list-style: none;
+    padding: 4px 0;
+    margin: 0;
+    pointer-events: auto;
+    min-width: 200px;
+  }
+  .fs-dropdown .item {
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #F7FAFC;
     transition: background 0.15s;
   }
-  .fs-add-btn:hover { background: #f1f5f9; }
+  .fs-dropdown .item:last-child {
+    border-bottom: none;
+  }
+  .fs-dropdown .item:hover {
+    background: #F7FAFC;
+  }
+  .fs-dropdown .item .name { 
+    font-weight: 500;
+    color: #2D3748;
+  }
+  .fs-dropdown .item .phone { 
+    font-size: 12px; 
+    color: #A0AEC0;
+    margin-left: 12px;
+  }
+  .fs-dropdown .empty {
+    padding: 14px;
+    text-align: center;
+    color: #A0AEC0;
+    font-size: 13px;
+  }
+  .fs-dropdown .item.selected {
+    background: #EBF5FF;
+  }
 
-  .fs-recap { background: #2c3e50; border-radius: 12px; padding: 20px; color: #fff; display: flex; flex-direction: column; gap: 14px; }
-  .fs-recap-row { display: flex; justify-content: space-between; align-items: center; }
-  .fs-recap-label { font-size: 10px; color: #78909c; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
-  .fs-recap-value { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-  .fs-recap-sep { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 0; }
-  .fs-recap-field { display: flex; flex-direction: column; gap: 6px; }
-  .fs-recap-input {
-    width: 100%; padding: 9px 11px; border-radius: 7px; box-sizing: border-box;
-    border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.07);
-    color: #fff; font-size: 15px; font-weight: 700; outline: none;
+  .fs-articles-header {
+    display: none;
   }
-  .fs-recap-select { width: 100%; padding: 9px 11px; border-radius: 7px; box-sizing: border-box; border: none; background: #fff; color: #2c3e50; font-size: 13px; font-weight: 700; cursor: pointer; }
-  .fs-dette-box { display: flex; justify-content: space-between; align-items: center; background: rgba(255,118,117,0.12); border-radius: 7px; padding: 10px 12px; }
-  .fs-dette-label { font-size: 12px; font-weight: 600; color: #ff7675; }
-  .fs-dette-value { font-size: 16px; font-weight: 800; color: #ff7675; }
-  .fs-submit {
-    width: 100%; padding: 13px; border: none; border-radius: 8px;
-    color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  @media (min-width: 768px) {
+    .fs-articles-header {
+      display: grid;
+      grid-template-columns: 80px 1fr 70px 100px 80px 40px;
+      gap: 12px;
+      padding: 0 4px 10px;
+      border-bottom: 1.5px solid #EDF2F7;
+      margin-bottom: 8px;
+    }
+    .fs-articles-header span {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #A0AEC0;
+    }
   }
-  .fs-submit:disabled { opacity: 0.45; cursor: not-allowed; }
-  .fs-submit:not(:disabled):active { transform: scale(0.98); }
+
+  .fs-article {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: #F7FAFC;
+    border: 1px solid #E2E8F0;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+  }
+  .fs-article:hover {
+    border-color: #CBD5E1;
+  }
+  @media (min-width: 768px) {
+    .fs-article {
+      display: grid;
+      grid-template-columns: 80px 1fr 70px 100px 80px 40px;
+      align-items: center;
+      padding: 8px 4px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #EDF2F7;
+      margin-bottom: 0;
+      gap: 12px;
+    }
+    .fs-article:hover {
+      background: #FAFBFC;
+    }
+  }
+
+  .fs-article .type-badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border: 1px solid;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .fs-article .type-badge.stock {
+    background: #EBF5FF;
+    border-color: #BFDBFE;
+    color: #1A56DB;
+  }
+  .fs-article .type-badge.free {
+    background: #FEF3C7;
+    border-color: #FDE68A;
+    color: #92400E;
+  }
+
+  .fs-article .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+  }
+  .fs-article .field-group .label-sm {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #718096;
+  }
+  .fs-article .field-group .input-sm,
+  .fs-article .field-group .select-sm {
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1.5px solid #E2E8F0;
+    background: #FFFFFF;
+    font-family: inherit;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .fs-article .field-group .input-sm:focus,
+  .fs-article .field-group .select-sm:focus {
+    border-color: #4A90D9;
+    box-shadow: 0 0 0 3px rgba(74,144,217,0.1);
+    outline: none;
+  }
+  .fs-article .field-group .select-sm {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%234A5568' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px;
+  }
+
+  @media (min-width: 768px) {
+    .fs-article .field-group .label-sm {
+      display: none;
+    }
+  }
+
+  .fs-article .subtotal {
+    font-weight: 700;
+    font-size: 15px;
+    color: #2D3748;
+    text-align: right;
+  }
+  .fs-article .subtotal .currency {
+    font-weight: 400;
+    font-size: 12px;
+    color: #718096;
+  }
+
+  .fs-article .actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .fs-article .btn-delete {
+    padding: 6px 12px;
+    border: 1.5px solid #FECACA;
+    background: #FDF2F2;
+    color: #EF4444;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .fs-article .btn-delete:hover {
+    background: #FECACA;
+    border-color: #EF4444;
+  }
+  @media (min-width: 768px) {
+    .fs-article .btn-delete {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .fs-article .btn-delete .txt {
+      display: none;
+    }
+  }
+
+  .fs-btn-add {
+    width: 100%;
+    padding: 12px;
+    background: #F7FAFC;
+    border: 1.5px dashed #CBD5E1;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #4A5568;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    font-family: inherit;
+    margin-top: 4px;
+  }
+  .fs-btn-add:hover {
+    background: #EDF2F7;
+    border-color: #4A90D9;
+    color: #4A90D9;
+  }
+
+  .fs-recap {
+    background: #1A202C;
+    padding: 24px;
+    color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border: 1px solid #2D3748;
+  }
+  .fs-recap .total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .fs-recap .total .label {
+    font-size: 13px;
+    color: #A0AEC0;
+    font-weight: 500;
+  }
+  .fs-recap .total .value {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .fs-recap .total .value .curr {
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.6;
+    margin-left: 4px;
+  }
+
+  .fs-recap .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .fs-recap .field .label {
+    font-size: 12px;
+    color: #A0AEC0;
+    font-weight: 500;
+  }
+  .fs-recap .field .input-dark {
+    padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .fs-recap .field .input-dark:focus {
+    border-color: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.12);
+    outline: none;
+  }
+  .fs-recap .field .input-dark::placeholder {
+    color: rgba(255,255,255,0.3);
+  }
+  .fs-recap .field .select-dark {
+    padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    width: 100%;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23A0AEC0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  .fs-recap .field .select-dark option {
+    color: #2D3748;
+    background: #FFFFFF;
+  }
+
+  .fs-recap .debt-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255,118,117,0.1);
+    border: 1px solid rgba(255,118,117,0.15);
+  }
+  .fs-recap .debt-box .label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #FC8181;
+  }
+  .fs-recap .debt-box .value {
+    font-size: 18px;
+    font-weight: 800;
+    color: #FC8181;
+  }
+
+  .fs-recap .btn-submit {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  }
+  .fs-recap .btn-submit:hover:not(:disabled) {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+  .fs-recap .btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .fs-sep {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin: 0;
+  }
+
+  .fs-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000;
+    padding: 20px;
+  }
+  .fs-modal {
+    background: #FFFFFF;
+    width: 100%;
+    max-width: 520px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 24px 48px -12px rgba(0,0,0,0.25);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .fs-modal-header {
+    padding: 16px 24px;
+    background: #F7FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .fs-modal-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2D3748;
+    margin: 0;
+  }
+  .fs-modal-header .close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #A0AEC0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .fs-modal-header .close:hover {
+    color: #2D3748;
+    background: #EDF2F7;
+  }
+  .fs-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .fs-modal-tabs {
+    display: flex;
+    border-bottom: 1px solid #E2E8F0;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+  }
+  .fs-modal-tab {
+    flex: 1;
+    padding: 12px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #718096;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .fs-modal-tab:hover {
+    color: #4A90D9;
+  }
+  .fs-modal-tab.active {
+    color: #4A90D9;
+    border-bottom-color: #4A90D9;
+  }
+
+  .fs-client-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+  .fs-client-list .item {
+    padding: 12px 16px;
+    background: #F7FAFC;
+    border: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .fs-client-list .item:hover {
+    background: #EDF2F7;
+  }
+  .fs-client-list .item .info h4 {
+    margin: 0 0 2px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D3748;
+  }
+  .fs-client-list .item .info p {
+    margin: 0;
+    font-size: 13px;
+    color: #718096;
+  }
+  .fs-client-list .item .btn-select {
+    padding: 6px 16px;
+    background: #4A90D9;
+    color: #FFFFFF;
+    border: 1px solid #4A90D9;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .fs-client-list .item .btn-select:hover {
+    background: #3A7BC8;
+  }
+  .fs-client-list .empty {
+    text-align: center;
+    color: #A0AEC0;
+    font-size: 14px;
+    padding: 20px 0;
+  }
+
+  @media (max-width: 480px) {
+    .fs-page { padding: 16px; }
+    .fs-tab .label { display: none; }
+    .fs-tab { padding: 10px; }
+    .fs-card-body { padding: 16px; }
+    .fs-recap { padding: 16px; }
+  }
 `;
-
-const pageStyles = {
-  selectorCard: { padding: '10px', background: '#fff', borderBottom: '1px solid #e8edf2', display: 'flex', alignItems: 'center', gap: '10px' },
-  label: { fontSize: '13px', fontWeight: '600', color: '#475569' },
-  select: { padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#fafafa', fontSize: '13px' },
-  loadingText: { fontSize: '12px', color: '#94a3b8', margin: 0 }
-};
 
 const FreeSales = () => {
   const dispatch = useDispatch();
-  const searchContainerRef = useRef(null);
+  const inputRef = useRef(null);
+  const dropdownRef = useRef(null);
 
-  // Sélecteurs Redux
-  const { statutChargement, erreurVente, venteReussie } = useSelector((state) => state.sales);
-  const { modes_paiement = [] } = useSelector((state) => state.core);
-  const { produits = [] } = useSelector((state) => state.stocks);
-  const { clients = [] } = useSelector((state) => state.clients);
-  const { boutiques = [], boutiqueSelectionnee } = useSelector((state) => state.shops);
-  
-  const idBoutiqueActive = boutiqueSelectionnee ? boutiqueSelectionnee.id : null;
+  const { statutChargement, erreurVente, venteReussie } = useSelector((s) => s.sales);
+  const { modes_paiement = [] } = useSelector((s) => s.core);
+  const { produits = [] } = useSelector((s) => s.stocks);
+  const { clients = [] } = useSelector((s) => s.clients);
+  const { boutiqueSelectionnee } = useSelector((s) => s.shops);
 
-  // États locaux
-  const [ongletActif, setOngletActif] = useState('ANONYME');
-  const [modeDePaiement, setModeDePaiement] = useState('ESPECE');
-  const [descriptionVente, setDescriptionVente] = useState('Vente comptant boutique - Client anonyme');
-  
+  const [activeTab, setActiveTab] = useState('ANONYME');
+  const [paymentMode, setPaymentMode] = useState('ESPECE');
+  const [description, setDescription] = useState('Vente comptant - Client anonyme');
   const [clientId, setClientId] = useState('');
-  const [rechercheClient, setRechercheClient] = useState('');
-  const [afficherDropdown, setAfficherDropdown] = useState(false);
-
-  const [estModalOuvert, setEstModalOuvert] = useState(false);
-  const [ongletModal, setOngletModal] = useState('CREER'); 
-
-  const [nouveauClient, setNouveauClient] = useState({ 
-    first_name_client: '', 
-    last_name_client: '', 
-    number_call_client: '' 
-  });
-
-  const [montantVerseInitial, setMontantVerseInitial] = useState(0);
-  const [lignes, setLignes] = useState([
-    { produit: '', designation: '', quantite: 1, prix_unitaire: 0, estProduitStocke: true }
+  const [clientSearch, setClientSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState('CREER');
+  const [newClient, setNewClient] = useState({ first_name: '', last_name: '', phone: '' });
+  const [downPayment, setDownPayment] = useState(0);
+  const [items, setItems] = useState([
+    { id: 1, type: 'stock', productId: '', designation: '', qty: 1, price: 0 }
   ]);
 
-  // Hook d'initialisation
+  const getProduct = (id) => produits.find(p => p.id === Number(id));
+
+  const filteredClients = useMemo(() => {
+    const term = clientSearch.toLowerCase().trim();
+    if (!term) return clients;
+    return clients.filter(c => {
+      const full = `${c.first_name_client || ''} ${c.last_name_client || ''} ${c.number_call_client || ''}`.toLowerCase();
+      return full.includes(term);
+    });
+  }, [clients, clientSearch]);
+
+  const total = useMemo(() => {
+    return items.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.price) || 0), 0);
+  }, [items]);
+
+  const remaining = activeTab === 'DETTE' ? Math.max(0, total - (Number(downPayment) || 0)) : 0;
+
+  const accentColor = activeTab === 'ANONYME' ? '#2ECC71' : activeTab === 'COMPTANT_CLIENT' ? '#4A90D9' : '#E67E22';
+
   useEffect(() => {
-    if (boutiques.length === 0) {
-      dispatch(chargerBoutiquesUtilisateur());
-    }
-    if (idBoutiqueActive || venteReussie) {
+    if (boutiqueSelectionnee?.id) {
       dispatch(chargerProduitsBoutique());
       dispatch(chargerClientsBoutique());
     }
+  }, [dispatch, boutiqueSelectionnee]);
 
-    const handleClicExterieur = (event) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
-        setAfficherDropdown(false);
-      }
-    };
+  // Calcul de la position du dropdown
+  const updateDropdownPosition = useCallback(() => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  }, []);
 
-    document.addEventListener('mousedown', handleClicExterieur);
-    return () => document.removeEventListener('mousedown', handleClicExterieur);
-  }, [dispatch, idBoutiqueActive, venteReussie, boutiques.length]);
-
-  // Synchronisation intelligente de la sélection après l'ajout d'un client
+  // Gestion du clic en dehors du dropdown
   useEffect(() => {
-    if (nouveauClient.number_call_client === 'PENDING_SYNC' && clients.length > 0) {
-      // Retrouve le dernier client inséré via son numéro de téléphone temporaire si besoin, ou prend le premier
-      const clientRecrute = clients[0]; 
-      if (clientRecrute) {
-        selectionnerClient(clientRecrute);
-        setNouveauClient({ first_name_client: '', last_name_client: '', number_call_client: '' });
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
       }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Mise à jour de la position du dropdown quand il s'ouvre
+  useEffect(() => {
+    if (showDropdown) {
+      updateDropdownPosition();
+      // Recalculer la position au scroll et resize
+      window.addEventListener('scroll', updateDropdownPosition);
+      window.addEventListener('resize', updateDropdownPosition);
+      return () => {
+        window.removeEventListener('scroll', updateDropdownPosition);
+        window.removeEventListener('resize', updateDropdownPosition);
+      };
     }
-  }, [clients]);
+  }, [showDropdown, updateDropdownPosition]);
 
-  // Gestionnaires de lignes d'articles
-  const ajouterLigne = () =>
-    setLignes([...lignes, { produit: '', designation: '', quantite: 1, prix_unitaire: 0, estProduitStocke: true }]);
+  const handleTabChange = useCallback((tab) => {
+    setActiveTab(tab);
+    setClientId('');
+    setClientSearch('');
+    setDownPayment(0);
+    if (tab === 'ANONYME') setDescription('Vente comptant - Client anonyme');
+    else if (tab === 'COMPTANT_CLIENT') setDescription('Vente comptant - Client identifié');
+    else setDescription('Vente à crédit - En attente de règlement');
+  }, []);
 
-  const supprimerLigne = (index) => lignes.length > 1 && setLignes(lignes.filter((_, i) => i !== index));
-
-  const handleBoutiqueChange = (event) => {
-    const boutiqueId = parseInt(event.target.value, 10);
-    const boutiqueTrouvee = boutiques.find((b) => b.id === boutiqueId);
-    if (boutiqueTrouvee) {
-      dispatch(selectionnerBoutique(boutiqueTrouvee));
-    }
-  };
-
-  const handleLigneChange = (index, champ, valeur) => {
-    const nl = [...lignes];
-    if (champ === 'estProduitStocke') {
-      nl[index] = { produit: '', designation: '', quantite: 1, prix_unitaire: 0, estProduitStocke: valeur };
-    } else if (champ === 'produit') {
-      const id = valeur ? Number(valeur) : '';
-      const p = produits.find(p => p.id === id);
-      nl[index]['produit'] = id;
-      if (p) nl[index]['prix_unitaire'] = p.prix_de_vente;
+  const handleItemChange = useCallback((index, field, value) => {
+    const updated = [...items];
+    if (field === 'type') {
+      updated[index] = { ...updated[index], type: value, productId: '', designation: '', price: 0 };
+    } else if (field === 'productId') {
+      const product = getProduct(value);
+      updated[index].productId = value;
+      updated[index].designation = product?.nom_produit || '';
+      updated[index].price = product?.prix_de_vente || 0;
     } else {
-      nl[index][champ] = valeur;
+      updated[index][field] = value;
     }
-    setLignes(nl);
-  };
+    setItems(updated);
+  }, [items]);
 
-  // Calculs financiers
-  const totalCalculé = lignes.reduce((t, l) => t + (Number(l.quantite) || 0) * (Number(l.prix_unitaire) || 0), 0);
-  const resteAPayer = ongletActif === 'DETTE' ? Math.max(0, totalCalculé - (Number(montantVerseInitial) || 0)) : 0;
+  const addItem = useCallback(() => {
+    setItems([...items, { id: Date.now(), type: 'stock', productId: '', designation: '', qty: 1, price: 0 }]);
+  }, [items]);
 
-  const basculerOnglet = (type) => {
-    setOngletActif(type);
-    setClientId('');
-    setRechercheClient('');
-    setMontantVerseInitial(0);
-    if (type === 'ANONYME') setDescriptionVente('Vente comptant boutique - Client anonyme');
-    else if (type === 'COMPTANT_CLIENT') setDescriptionVente('Vente comptant - Client identifié');
-    else setDescriptionVente('Vente à crédit - En attente de règlement');
-  };
+  const removeItem = useCallback((index) => {
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index));
+    }
+  }, [items]);
 
-  // Filtrage basé uniquement sur Redux (Zéro doublon)
-  const clientsFiltrés = clients.filter(c => {
-    const prenom = String(c.first_name_client || '').toLowerCase();
-    const nom = String(c.last_name_client || '').toLowerCase();
-    const tel = String(c.number_call_client || '').toLowerCase(); 
-    const terme = rechercheClient.toLowerCase();
-
-    if (rechercheClient.includes('·')) return true;
-    return prenom.includes(terme) || nom.includes(terme) || tel.includes(terme);
-  });
-
-  const selectionnerClient = (client) => {
-    const prenom = client.first_name_client || '';
-    const nom = client.last_name_client || '';
-    const tel = client.number_call_client || '';
+  const selectClient = useCallback((client) => {
     setClientId(client.id);
-    setRechercheClient(`${prenom} ${nom} · ${tel}`);
-    setAfficherDropdown(false);
-  };
+    setClientSearch(`${client.first_name_client || ''} ${client.last_name_client || ''} · ${client.number_call_client || ''}`);
+    setShowDropdown(false);
+  }, []);
 
-  // Gestion de la création client épurée
-  const handleCreerClient = async (e) => {
+  const handleCreateClient = useCallback(async (e) => {
     e.preventDefault();
-    e.stopPropagation();
-
-    if (!nouveauClient.first_name_client || !nouveauClient.last_name_client || !nouveauClient.number_call_client) {
-      alert("Veuillez remplir tous les champs obligatoires du client.");
+    const { first_name, last_name, phone } = newClient;
+    if (!first_name || !last_name || !phone) {
+      alert('Veuillez remplir tous les champs');
       return;
     }
-
-    const payloadClient = { 
-      first_name_client: nouveauClient.first_name_client,
-      last_name_client: nouveauClient.last_name_client,
-      number_call_client: Number(nouveauClient.number_call_client),
-      boutique: Number(idBoutiqueActive || 1)
-    };
-
-    // 1. Envoi au serveur via Redux
-    await dispatch(ajouterClient(payloadClient));
-    
-    // 2. Commande un rechargement propre pour garantir la récupération de l'ID backend réel
+    await dispatch(ajouterClient({
+      first_name_client: first_name,
+      last_name_client: last_name,
+      number_call_client: Number(phone),
+      boutique: Number(boutiqueSelectionnee?.id || 1)
+    }));
     dispatch(chargerClientsBoutique());
+    setNewClient({ first_name: '', last_name: '', phone: '' });
+    setModalOpen(false);
+  }, [newClient, boutiqueSelectionnee, dispatch]);
 
-    // 3. Flag de synchronisation pour le second useEffect
-    setNouveauClient(prev => ({ ...prev, number_call_client: 'PENDING_SYNC' }));
-    setEstModalOuvert(false);
-  };
-
-  const soumettreVente = (e) => {
+  const handleSubmit = useCallback((e) => {
     e.preventDefault();
-    if ((ongletActif === 'DETTE' || ongletActif === 'COMPTANT_CLIENT') && !clientId) {
-      alert("⚠️ Veuillez rechercher et sélectionner un compte client pour valider cette opération.");
+    if ((activeTab === 'DETTE' || activeTab === 'COMPTANT_CLIENT') && !clientId) {
+      alert('Veuillez sélectionner un client');
       return;
     }
-    const lignesFormatees = lignes.map(l =>
-      l.estProduitStocke
-        ? { produit: Number(l.produit), quantite: Number(l.quantite), prix_unitaire: Number(l.prix_unitaire) }
-        : { designation: l.designation, quantite: Number(l.quantite), prix_unitaire: Number(l.prix_unitaire) }
-    );
-    const payloadVente = {
-      boutique: Number(idBoutiqueActive || 1),
-      type_de_vente: ongletActif === 'DETTE' ? 'DETTE' : 'COMPTANT',
-      montant_paye: ongletActif === 'DETTE' ? Number(montantVerseInitial) : totalCalculé,
-      mode_de_paiement: modeDePaiement,
-      description_vente: descriptionVente,
-      client: ongletActif === 'ANONYME' ? null : Number(clientId),
-      lignes: lignesFormatees
-    };
-    dispatch(enregistrerNouvelleVente(payloadVente));
-  };
+    const lines = items.map(item => {
+      if (item.type === 'stock') {
+        return { produit: Number(item.productId), quantite: Number(item.qty), prix_unitaire: Number(item.price) };
+      } else {
+        return { designation: item.designation, quantite: Number(item.qty), prix_unitaire: Number(item.price) };
+      }
+    });
+    dispatch(enregistrerNouvelleVente({
+      boutique: Number(boutiqueSelectionnee?.id || 1),
+      type_de_vente: activeTab === 'DETTE' ? 'DETTE' : 'COMPTANT',
+      montant_paye: activeTab === 'DETTE' ? Number(downPayment) : total,
+      mode_de_paiement: paymentMode,
+      description_vente: description,
+      client: activeTab === 'ANONYME' ? null : Number(clientId),
+      lignes: lines
+    }));
+  }, [activeTab, clientId, items, paymentMode, description, downPayment, total, boutiqueSelectionnee, dispatch]);
 
-  const reinitialiserFormulaire = () => {
-    setLignes([{ produit: '', designation: '', quantite: 1, prix_unitaire: 0, estProduitStocke: true }]);
-    setModeDePaiement('ESPECE');
+  const resetForm = useCallback(() => {
+    setItems([{ id: Date.now(), type: 'stock', productId: '', designation: '', qty: 1, price: 0 }]);
+    setPaymentMode('ESPECE');
     setClientId('');
-    setRechercheClient('');
-    setMontantVerseInitial(0);
-    basculerOnglet('ANONYME');
+    setClientSearch('');
+    setDownPayment(0);
+    handleTabChange('ANONYME');
     dispatch(nettoyerStatutVente());
-  };
+  }, [dispatch, handleTabChange]);
 
-  const accentColor =
-    ongletActif === 'ANONYME' ? '#2ecc71' :
-    ongletActif === 'COMPTANT_CLIENT' ? '#3498db' : '#e67e22';
-
-  const TABS = [
-    { key: 'ANONYME',         emoji: '🛒', label: 'Comptant anonyme', color: '#2ecc71', subtitle: 'Saisie rapide pour les clients de passage.' },
-    { key: 'COMPTANT_CLIENT', emoji: '👤', label: 'Comptant client',  color: '#3498db', subtitle: "L'achat est enregistré dans l'historique client." },
-    { key: 'DETTE',           emoji: '📝', label: 'À crédit',         color: '#e67e22', subtitle: "La dette est ajoutée au solde débiteur du client." },
+  const tabs = [
+    { key: 'ANONYME', icon: '🛒', label: 'Comptant anonyme', desc: 'Saisie rapide sans identification' },
+    { key: 'COMPTANT_CLIENT', icon: '👤', label: 'Comptant client', desc: 'Vente avec suivi client' },
+    { key: 'DETTE', icon: '📝', label: 'À crédit', desc: 'Enregistrement de dette client' },
   ];
 
-  const activeTab = TABS.find(t => t.key === ongletActif);
+  const activeTabData = tabs.find(t => t.key === activeTab);
+
+  // Composant Dropdown avec Portal
+  const DropdownPortal = () => {
+    if (!showDropdown) return null;
+    
+    return createPortal(
+      <div className="fs-dropdown-portal">
+        <div 
+          ref={dropdownRef}
+          className="fs-dropdown"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+          }}
+        >
+          {filteredClients.length > 0 ? (
+            filteredClients.map(c => (
+              <li 
+                key={c.id} 
+                className={`item ${c.id === clientId ? 'selected' : ''}`}
+                onMouseDown={() => selectClient(c)}
+              >
+                <span className="name">
+                  {c.first_name_client} {c.last_name_client}
+                </span>
+                <span className="phone">📞 {c.number_call_client}</span>
+              </li>
+            ))
+          ) : (
+            <li className="empty">
+              Aucun client trouvé. Cliquez sur <strong>+</strong> pour en ajouter.
+            </li>
+          )}
+        </div>
+      </div>,
+      document.body
+    );
+  };
 
   return (
     <DashboardLayout>
       <style>{GLOBAL_CSS}</style>
 
-      {/* BANDEAU SÉLECTEUR DE BOUTIQUE */}
-      <div style={pageStyles.selectorCard}>
-        <label htmlFor="boutique-select" style={pageStyles.label}>🏪 Boutique active :</label>
-        {statutChargement && boutiques.length === 0 ? (
-          <p style={pageStyles.loadingText}>Chargement des points de vente...</p>
-        ) : (
-          <select
-            id="boutique-select"
-            value={boutiqueSelectionnee ? boutiqueSelectionnee.id : ''}
-            onChange={handleBoutiqueChange}
-            style={pageStyles.select}
-          >
-            {boutiques.length === 0 ? (
-              <option value="">Aucune boutique trouvée</option>
-            ) : (
-               boutiques.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.nom_boutique}
-                </option>
-              ))
-            )}
-          </select>
-        )}
-      </div>
-
-      <div className="fs-page">
-        {/* SÉLECTION TYPE DE VENTE */}
-        <div className="fs-tabs">
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              type="button"
-              className={`fs-tab${ongletActif === tab.key ? ' active' : ''}`}
-              style={ongletActif === tab.key ? { color: tab.color } : {}}
-              onClick={() => basculerOnglet(tab.key)}
-            >
-              <span>{tab.emoji}</span>
-              <span className="fs-tab-label">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* ENTÊTE DYNAMIQUE */}
-        <div className="fs-header">
-          <h2 style={{ borderLeft: `3px solid ${accentColor}`, paddingLeft: '10px' }}>{activeTab.label}</h2>
-          <p>{activeTab.subtitle}</p>
-        </div>
-
-        {/* FEEDBACKS API */}
-        {venteReussie && (
-          <div className="fs-alert fs-alert-success">
-            <span style={{ fontSize: '20px' }}>🎉</span>
-            <div className="fs-alert-body">
-              <strong>Opération enregistrée !</strong>
-              <span>Net encaissé : {totalCalculé.toLocaleString()} FCFA</span>
-            </div>
-            <button type="button" className="fs-btn-new" onClick={reinitialiserFormulaire}>+ Nouvelle vente</button>
+      <div className="fs-app">
+        <div className="fs-page">
+          {/* TABS */}
+          <div className="fs-tabs">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                className={`fs-tab ${activeTab === tab.key ? 'active' : ''}`}
+                onClick={() => handleTabChange(tab.key)}
+                style={activeTab === tab.key ? { color: tab.key === 'ANONYME' ? '#2ECC71' : tab.key === 'COMPTANT_CLIENT' ? '#4A90D9' : '#E67E22' } : {}}
+              >
+                <span className="icon">{tab.icon}</span>
+                <span className="label">{tab.label}</span>
+              </button>
+            ))}
           </div>
-        )}
-        {erreurVente && (
-          <div className="fs-alert fs-alert-error">
-            <span>⚠️</span>
-            <div className="fs-alert-body"><strong>Erreur :</strong> {erreurVente}</div>
+
+          {/* HEADER */}
+          <div className="fs-header">
+            <h1>{activeTabData?.label}</h1>
+            <p>{activeTabData?.desc}</p>
           </div>
-        )}
 
-        <form onSubmit={soumettreVente}>
-          <div className="fs-layout">
-            {/* PANNEAU PRINCIPAL */}
-            <div className="fs-main">
-              {/* CONFIGURATION CONTEXTE */}
-              <div className="fs-card">
-                <p className="fs-card-title">Contexte de la vente</p>
-                <div className="fs-grid-2">
-                  <div className="fs-field">
-                    <label className="fs-label">Description / Notes</label>
-                    <input
-                      className="fs-input"
-                      type="text"
-                      value={descriptionVente}
-                      onChange={(e) => setDescriptionVente(e.target.value)}
-                    />
-                  </div>
-
-                  {ongletActif !== 'ANONYME' && (
-                    <div className="fs-field" ref={searchContainerRef}>
-                      <label className="fs-label">
-                        Rechercher un client <span style={{ color: accentColor }}>*</span>
-                      </label>
-                      <div className="fs-search-wrapper">
-                        <input
-                          className="fs-input"
-                          type="text"
-                          placeholder="Taper le nom ou téléphone..."
-                          value={rechercheClient}
-                          required={!clientId}
-                          onFocus={() => setAfficherDropdown(true)}
-                          onChange={(e) => {
-                            setRechercheClient(e.target.value);
-                            setClientId(''); 
-                            setAfficherDropdown(true);
-                          }}
-                        />
-                        <button 
-                          type="button" 
-                          className="fs-btn-action" 
-                          title="Gérer les clients"
-                          onClick={() => setEstModalOuvert(true)}
-                        >
-                          👤+
-                        </button>
-
-                        {afficherDropdown && (
-                          <ul className="fs-search-dropdown">
-                            {clientsFiltrés.length > 0 ? (
-                              clientsFiltrés.map(c => (
-                                <li 
-                                  key={c.id} 
-                                  className="fs-search-item"
-                                  onMouseDown={() => selectionnerClient(c)}
-                                >
-                                  <strong>{c.first_name_client} {c.last_name_client}</strong> · {c.number_call_client}
-                                </li>
-                              ))
-                            ) : (
-                              <li className="fs-search-empty">Aucun client trouvé. Cliquez sur "👤+" pour l'ajouter.</li>
-                            )}
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+          {/* ALERTS */}
+          {venteReussie && (
+            <div className="fs-alert success">
+              <span className="icon">✅</span>
+              <div className="body">
+                <strong>Vente enregistrée</strong>
+                <span>Montant : {total.toLocaleString()} FCFA</span>
               </div>
+              <button className="action-btn" onClick={resetForm}>+ Nouvelle vente</button>
+            </div>
+          )}
+          {erreurVente && (
+            <div className="fs-alert error">
+              <span className="icon">⚠️</span>
+              <div className="body">
+                <strong>Erreur</strong>
+                <span>{erreurVente}</span>
+              </div>
+            </div>
+          )}
 
-              {/* LISTE DES ARTICLES */}
-              <div className="fs-card">
-                <p className="fs-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Articles</span>
-                  <span style={{ background: '#f1f5f9', color: '#64748b', fontSize: '10px', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>
-                    {lignes.length}
-                  </span>
-                </p>
-
-                <div className="fs-articles-header">
-                  <span>Type</span>
-                  <span>Désignation</span>
-                  <span style={{ textAlign: 'center' }}>Qté</span>
-                  <span>Prix unit.</span>
-                  <span style={{ textAlign: 'right' }}>Sous-total</span>
-                  <span></span>
-                </div>
-
-                {lignes.map((ligne, index) => (
-                  <div key={index} className="fs-ligne">
-                    <div className="fs-ligne-cell">
-                      <label>Type d'article</label>
-                      <select
-                        className="fs-select"
-                        value={ligne.estProduitStocke}
-                        onChange={(e) => handleLigneChange(index, 'estProduitStocke', e.target.value === 'true')}
-                      >
-                        <option value="true">📦 Stocké</option>
-                        <option value="false">🛍️ Libre (Non stocké)</option>
-                      </select>
-                    </div>
-
-                    <div className="fs-ligne-cell">
-                      <label>Désignation</label>
-                      {ligne.estProduitStocke ? (
-                        <select
-                          className="fs-select"
-                          value={ligne.produit}
-                          required
-                          onChange={(e) => handleLigneChange(index, 'produit', e.target.value)}
-                        >
-                          <option value="">— Sélectionner le produit —</option>
-                          {produits?.map(p => (
-                            <option key={p.id} value={p.id}>{p.nom_produit} ({p.stock_quantite} dispo)</option>
-                          ))}
-                        </select>
-                      ) : (
+          {/* MAIN FORM */}
+          <form onSubmit={handleSubmit}>
+            <div className="fs-grid">
+              {/* LEFT COLUMN */}
+              <div>
+                {/* Contexte Card */}
+                <div className="fs-card" style={{ marginBottom: '24px' }}>
+                  <div className="fs-card-header">
+                    <h3 className="fs-card-title">📋 Contexte</h3>
+                  </div>
+                  <div className="fs-card-body">
+                    <div className="fs-grid-2">
+                      <div className="fs-field">
+                        <label className="label">
+                          Description
+                          <span className="hint">optionnel</span>
+                        </label>
                         <input
-                          className="fs-input"
+                          className="input"
                           type="text"
-                          placeholder="Nom ou description de l'article"
-                          value={ligne.designation}
-                          required
-                          onChange={(e) => handleLigneChange(index, 'designation', e.target.value)}
+                          placeholder="Ex: Vente du matin"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
                         />
+                      </div>
+
+                      {activeTab !== 'ANONYME' && (
+                        <div className="fs-field">
+                          <label className="label">
+                            Client <span className="required">*</span>
+                            <span className="hint">recherche</span>
+                          </label>
+                          <div className="fs-search-wrapper">
+                            <div className="fs-search">
+                              <input
+                                ref={inputRef}
+                                className="input"
+                                type="text"
+                                placeholder="Nom ou téléphone..."
+                                value={clientSearch}
+                                required={!clientId}
+                                onFocus={() => {
+                                  setShowDropdown(true);
+                                  setTimeout(updateDropdownPosition, 10);
+                                }}
+                                onChange={(e) => {
+                                  setClientSearch(e.target.value);
+                                  setClientId('');
+                                  setShowDropdown(true);
+                                  setTimeout(updateDropdownPosition, 10);
+                                }}
+                              />
+                              <button 
+                                type="button" 
+                                className="btn-add" 
+                                onClick={() => setModalOpen(true)}
+                                title="Gérer les clients"
+                              >
+                                +
+                              </button>
+                            </div>
+                            {clientId && (
+                              <div style={{ 
+                                fontSize: '12px', 
+                                color: '#1A7A3A', 
+                                marginTop: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                ✅ Client sélectionné
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
-
-                    <div className="fs-ligne-cell">
-                      <label>Quantité</label>
-                      <input
-                        className="fs-input"
-                        type="number"
-                        min="1"
-                        value={ligne.quantite}
-                        required
-                        onChange={(e) => handleLigneChange(index, 'quantite', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="fs-ligne-cell">
-                      <label>Prix unitaire (FCFA)</label>
-                      <input
-                        className="fs-input"
-                        type="number"
-                        placeholder="0"
-                        value={ligne.prix_unitaire}
-                        required
-                        onChange={(e) => handleLigneChange(index, 'prix_unitaire', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="fs-ligne-actions-mobile">
-                      <div className="fs-ligne-cell" style={{ width: 'auto' }}>
-                        <label>Sous-total</label>
-                        <div className="fs-ligne-total">
-                          {((Number(ligne.quantite) * Number(ligne.prix_unitaire)) || 0).toLocaleString()} FCFA
-                        </div>
-                      </div>
-                      <div>
-                        {lignes.length > 1 && (
-                          <button type="button" className="fs-del-btn" onClick={() => supprimerLigne(index)}>
-                            🗑️ <span className="txt-del">Supprimer</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
                   </div>
-                ))}
-
-                <button type="button" className="fs-add-btn" onClick={ajouterLigne}>
-                  <span>+</span> Ajouter un article
-                </button>
-              </div>
-            </div>
-
-            {/* BLOC RÉCAPITULATIF (STICKY ASIDE) */}
-            <div className="fs-aside">
-              <div className="fs-recap">
-                <div>
-                  <div className="fs-recap-label">Net à payer</div>
-                  <div className="fs-recap-value">{totalCalculé.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 500, opacity: 0.6 }}>FCFA</span></div>
                 </div>
 
-                {ongletActif === 'DETTE' && (
-                  <>
-                    <hr className="fs-recap-sep" />
-                    <div className="fs-recap-field">
-                      <label className="fs-recap-label">Acompte versé</label>
-                      <input
-                        className="fs-recap-input"
-                        type="number"
-                        min="0"
-                        max={totalCalculé}
-                        value={montantVerseInitial}
-                        onChange={(e) => {
-                          const val = Number(e.target.value) || 0;
-                          setMontantVerseInitial(val > totalCalculé ? totalCalculé : val);
-                        }}
-                      />
+                {/* Articles Card */}
+                <div className="fs-card">
+                  <div className="fs-card-header">
+                    <h3 className="fs-card-title">
+                      🛍️ Articles
+                      <span className="count">{items.length}</span>
+                    </h3>
+                    <span className="fs-card-subtitle">{total.toLocaleString()} FCFA</span>
+                  </div>
+                  <div className="fs-card-body">
+                    <div className="fs-articles-header">
+                      <span>Type</span>
+                      <span>Désignation</span>
+                      <span style={{ textAlign: 'center' }}>Qté</span>
+                      <span>Prix</span>
+                      <span style={{ textAlign: 'right' }}>Sous-total</span>
+                      <span></span>
                     </div>
-                    <div className="fs-dette-box">
-                      <span className="fs-dette-label">Reste dû</span>
-                      <span className="fs-dette-value">{resteAPayer.toLocaleString()} FCFA</span>
-                    </div>
-                  </>
-                )}
 
-                <hr className="fs-recap-sep" />
+                    {items.map((item, index) => {
+                      const product = item.type === 'stock' ? getProduct(item.productId) : null;
+                      return (
+                        <div key={item.id || index} className="fs-article">
+                          <div className="field-group">
+                            <span className="label-sm">Type</span>
+                            <select
+                              className="select-sm"
+                              value={item.type}
+                              onChange={(e) => handleItemChange(index, 'type', e.target.value)}
+                            >
+                              <option value="stock">📦 Stocké</option>
+                              <option value="free">🛍️ Libre</option>
+                            </select>
+                          </div>
 
-                <div className="fs-recap-field">
-                  <label className="fs-recap-label">
-                    {ongletActif === 'DETTE' ? "Encaissement acompte" : "Règlement par"}
-                  </label>
-                  <select
-                    className="fs-recap-select"
-                    value={modeDePaiement}
-                    onChange={(e) => setModeDePaiement(e.target.value)}
+                          <div className="field-group">
+                            <span className="label-sm">Désignation</span>
+                            {item.type === 'stock' ? (
+                              <select
+                                className="select-sm"
+                                value={item.productId}
+                                required
+                                onChange={(e) => handleItemChange(index, 'productId', e.target.value)}
+                              >
+                                <option value="">Sélectionner...</option>
+                                {produits.map(p => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.nom_produit} ({p.stock_quantite})
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                className="input-sm"
+                                type="text"
+                                placeholder="Nom de l'article"
+                                value={item.designation}
+                                required
+                                onChange={(e) => handleItemChange(index, 'designation', e.target.value)}
+                              />
+                            )}
+                          </div>
+
+                          <div className="field-group">
+                            <span className="label-sm">Qté</span>
+                            <input
+                              className="input-sm"
+                              type="number"
+                              min="1"
+                              value={item.qty}
+                              required
+                              onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
+                            />
+                          </div>
+
+                          <div className="field-group">
+                            <span className="label-sm">Prix</span>
+                            <input
+                              className="input-sm"
+                              type="number"
+                              placeholder="0"
+                              value={item.price}
+                              required
+                              onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                            />
+                          </div>
+
+                          <div className="subtotal">
+                            {((Number(item.qty) * Number(item.price)) || 0).toLocaleString()}
+                            <span className="currency"> FCFA</span>
+                          </div>
+
+                          <div className="actions">
+                            {items.length > 1 && (
+                              <button type="button" className="btn-delete" onClick={() => removeItem(index)}>
+                                ✕ <span className="txt">Supprimer</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <button type="button" className="fs-btn-add" onClick={addItem}>
+                      <span style={{ fontSize: '20px' }}>+</span> Ajouter un article
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN - RECAP */}
+              <div>
+                <div className="fs-recap">
+                  <div className="total">
+                    <span className="label">Total</span>
+                    <span className="value">
+                      {total.toLocaleString()}
+                      <span className="curr">FCFA</span>
+                    </span>
+                  </div>
+
+                  {activeTab === 'DETTE' && (
+                    <>
+                      <hr className="fs-sep" />
+                      <div className="field">
+                        <label className="label">Acompte versé</label>
+                        <input
+                          className="input-dark"
+                          type="number"
+                          min="0"
+                          max={total}
+                          placeholder="0"
+                          value={downPayment}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setDownPayment(val > total ? total : val);
+                          }}
+                        />
+                      </div>
+                      <div className="debt-box">
+                        <span className="label">Reste à payer</span>
+                        <span className="value">{remaining.toLocaleString()} FCFA</span>
+                      </div>
+                    </>
+                  )}
+
+                  <hr className="fs-sep" />
+
+                  <div className="field">
+                    <label className="label">
+                      {activeTab === 'DETTE' ? 'Mode de paiement' : 'Règlement'}
+                    </label>
+                    <select
+                      className="select-dark"
+                      value={paymentMode}
+                      onChange={(e) => setPaymentMode(e.target.value)}
+                    >
+                      {modes_paiement.length > 0 ? (
+                        modes_paiement.map(m => <option key={m.value} value={m.value}>{m.label}</option>)
+                      ) : (
+                        <>
+                          <option value="ESPECE">💵 Espèce</option>
+                          <option value="ORANGE_MONEY">🍊 Orange Money</option>
+                          <option value="WAVE">🌊 Wave</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="btn-submit"
+                    style={{ background: accentColor }}
+                    disabled={
+                      statutChargement ||
+                      items.some(i => i.type === 'stock' ? !i.productId : !i.designation)
+                    }
                   >
-                    {modes_paiement.length > 0 ? (
-                      modes_paiement.map(m => <option key={m.value} value={m.value}>{m.label}</option>)
-                    ) : (
-                      <>
-                        <option value="ESPECE">💵 Espèce</option>
-                        <option value="ORANGE_MONEY">🍊 Orange Money</option>
-                        <option value="WAVE">🌊 Wave</option>
-                      </>
-                    )}
-                  </select>
+                    {statutChargement ? '⏳ Enregistrement...' : '✅ Valider la vente'}
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  className="fs-submit"
-                  style={{ background: accentColor }}
-                  disabled={statutChargement || lignes.some(l => l.estProduitStocke ? !l.produit : !l.designation)}
-                >
-                  {statutChargement ? 'Validation en cours...' : '🛒 Confirmer & Valider la vente'}
-                </button>
               </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
 
-      {/* ─── MODAL GESTION CLIENTS CORRIGÉ ─── */}
-      {estModalOuvert && (
-        <div className="fs-modal-overlay" onClick={() => setEstModalOuvert(false)}>
+      {/* DROPDOWN PORTAL */}
+      <DropdownPortal />
+
+      {/* MODAL CLIENTS */}
+      {modalOpen && (
+        <div className="fs-modal-overlay" onClick={() => setModalOpen(false)}>
           <div className="fs-modal" onClick={(e) => e.stopPropagation()}>
             <div className="fs-modal-header">
-              <h3>Gestion des comptes clients</h3>
-              <button type="button" className="fs-modal-close" onClick={() => setEstModalOuvert(false)}>×</button>
+              <h3>👥 Gestion des clients</h3>
+              <button className="close" onClick={() => setModalOpen(false)}>✕</button>
             </div>
-
-            {/* Onglets du modal avec injection dynamique du compteur entre parenthèses */}
             <div className="fs-modal-tabs">
               <button
-                type="button"
-                className={`fs-modal-tab${ongletModal === 'CREER' ? ' active' : ''}`}
-                onClick={() => setOngletModal('CREER')}
+                className={`fs-modal-tab ${modalTab === 'CREER' ? 'active' : ''}`}
+                onClick={() => setModalTab('CREER')}
               >
-                ➕ Nouveau client
+                ➕ Nouveau
               </button>
               <button
-                type="button"
-                className={`fs-modal-tab${ongletModal === 'LISTE' ? ' active' : ''}`}
-                onClick={() => setOngletModal('LISTE')}
+                className={`fs-modal-tab ${modalTab === 'LISTE' ? 'active' : ''}`}
+                onClick={() => setModalTab('LISTE')}
               >
                 📋 Sélectionner ({clients.length})
               </button>
             </div>
-
             <div className="fs-modal-body">
-              {ongletModal === 'CREER' ? (
-                <form onSubmit={handleCreerClient} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {modalTab === 'CREER' ? (
+                <form onSubmit={handleCreateClient} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div className="fs-field">
-                    <label className="fs-label">Prénom *</label>
+                    <label className="label">Prénom <span className="required">*</span></label>
                     <input
-                      className="fs-input"
+                      className="input"
                       type="text"
+                      placeholder="Ex: Amadou"
                       required
-                      value={nouveauClient.first_name_client}
-                      onChange={(e) => setNouveauClient({ ...nouveauClient, first_name_client: e.target.value })}
+                      value={newClient.first_name}
+                      onChange={(e) => setNewClient({ ...newClient, first_name: e.target.value })}
                     />
                   </div>
                   <div className="fs-field">
-                    <label className="fs-label">Nom *</label>
+                    <label className="label">Nom <span className="required">*</span></label>
                     <input
-                      className="fs-input"
+                      className="input"
                       type="text"
+                      placeholder="Ex: Diallo"
                       required
-                      value={nouveauClient.last_name_client}
-                      onChange={(e) => setNouveauClient({ ...nouveauClient, last_name_client: e.target.value })}
+                      value={newClient.last_name}
+                      onChange={(e) => setNewClient({ ...newClient, last_name: e.target.value })}
                     />
                   </div>
                   <div className="fs-field">
-                    <label className="fs-label">Téléphone *</label>
+                    <label className="label">Téléphone <span className="required">*</span></label>
                     <input
-                      className="fs-input"
+                      className="input"
                       type="tel"
+                      placeholder="77 123 45 67"
                       required
-                      placeholder="Ex: 77XXXXXXX"
-                      value={nouveauClient.number_call_client}
-                      onChange={(e) => setNouveauClient({ ...nouveauClient, number_call_client: e.target.value })}
+                      value={newClient.phone}
+                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
                     />
                   </div>
                   <button
                     type="submit"
-                    className="fs-submit"
-                    style={{ background: '#3498db', marginTop: '10px' }}
+                    style={{
+                      background: '#4A90D9',
+                      padding: '12px',
+                      border: 'none',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      color: '#fff',
+                      fontFamily: 'inherit'
+                    }}
                   >
-                    Enregistrer et sélectionner le client
+                    ➕ Enregistrer
                   </button>
                 </form>
               ) : (
                 <ul className="fs-client-list">
                   {clients.length > 0 ? (
-                    clients.map((c) => (
-                      <li key={c.id} className="fs-client-item">
-                        <div className="fs-client-info">
+                    clients.map(c => (
+                      <li key={c.id} className="item">
+                        <div className="info">
                           <h4>{c.first_name_client} {c.last_name_client}</h4>
                           <p>📞 {c.number_call_client}</p>
                         </div>
-                        <button
-                          type="button"
-                          className="fs-btn-new"
-                          style={{ background: '#3498db' }}
-                          onClick={() => {
-                            selectionnerClient(c);
-                            setEstModalOuvert(false);
-                          }}
-                        >
+                        <button className="btn-select" onClick={() => { selectClient(c); setModalOpen(false); }}>
                           Choisir
                         </button>
                       </li>
                     ))
                   ) : (
-                    <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                      Aucun client enregistré dans cette boutique.
-                    </p>
+                    <li className="empty">Aucun client enregistré</li>
                   )}
                 </ul>
               )}
